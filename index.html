@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="Build Your Character — A real-life RPG progression system. Complete actions, earn XP, level up.">
+  <title>Project Human — Build Your Character</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="index.css">
+  
+</head>
+<body>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- XP Popup Layer -->
+  <div id="xp-popup-layer" class="xp-popup-layer"></div>
+
+  <!-- Level Up Overlay -->
+  <div id="level-up-overlay" class="level-up-overlay">
+    <div class="level-up-content">
+      <div class="level-up-glow"></div>
+      <div class="level-up-icon">⚡</div>
+      <h2 class="level-up-title">LEVEL UP!</h2>
+      <p class="level-up-level" id="level-up-level-text">Level 2</p>
+      <p class="level-up-message">You're becoming stronger.</p>
+      <button class="btn btn-primary" onclick="App.dismissLevelUp()">Continue</button>
+    </div>
+  </div>
+
+  <!-- Achievement Unlocked Overlay -->
+  <div id="achievement-overlay" class="achievement-overlay">
+    <div class="achievement-popup">
+      <div class="achievement-popup-icon" id="achievement-popup-icon">🏆</div>
+      <p class="achievement-popup-label">Achievement Unlocked</p>
+      <h3 class="achievement-popup-name" id="achievement-popup-name">First Step</h3>
+      <p class="achievement-popup-desc" id="achievement-popup-desc">Complete your first action</p>
+    </div>
+  </div>
+
+  <!-- Onboarding / Character Creation Overlay -->
+  <div id="onboarding-overlay" class="onboarding-overlay">
+    <div class="onboarding-content">
+      <div class="onboarding-glow"></div>
+      <h2 class="onboarding-title">CREATE YOUR CHARACTER</h2>
+      <p class="onboarding-subtitle">Life is the game. Build yourself.</p>
+      
+      <div class="onboarding-step" id="onboarding-step-1">
+        <div class="form-group">
+          <label class="form-label" for="onboarding-name-input">What should we call you?</label>
+          <input type="text" id="onboarding-name-input" class="form-input" placeholder="What should we call you?" required>
+        </div>
+        <button class="btn btn-primary btn-full" style="margin-top: 16px;" onclick="App.nextOnboardingStep()">Continue</button>
+      </div>
+
+      <div class="onboarding-step" id="onboarding-step-2" style="display: none;">
+        <label class="form-label">Select Your Archetype</label>
+        <div class="archetype-grid">
+          <div class="archetype-card" id="archetype-warrior" onclick="App.selectArchetype('warrior')">
+            <span class="archetype-icon">⚔️</span>
+            <span class="archetype-name">Warrior</span>
+            <span class="archetype-desc">Focuses on physical mastery & discipline. Strength is the path.</span>
+          </div>
+          <div class="archetype-card" id="archetype-scholar" onclick="App.selectArchetype('scholar')">
+            <span class="archetype-icon">🧠</span>
+            <span class="archetype-name">Scholar</span>
+            <span class="archetype-desc">Focuses on academic growth & intelligence. Knowledge is power.</span>
+          </div>
+          <div class="archetype-card" id="archetype-builder" onclick="App.selectArchetype('builder')">
+            <span class="archetype-icon">💰</span>
+            <span class="archetype-name">Builder</span>
+            <span class="archetype-desc">Focuses on finances & side projects. Wealth is freedom.</span>
+          </div>
+          <div class="archetype-card" id="archetype-leader" onclick="App.selectArchetype('leader')">
+            <span class="archetype-icon">👑</span>
+            <span class="archetype-name">Leader</span>
+            <span class="archetype-desc">Focuses on social skills & network. Connection is key.</span>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-full" style="margin-top: 24px;" onclick="App.finishOnboarding()">Start Journey</button>
+      </div>
+
+      <div class="onboarding-step" id="onboarding-step-3" style="display: none;">
+        <div class="onboarding-welcome">
+          <div class="welcome-icon">✨</div>
+          <h3 id="onboarding-welcome-title">Welcome, Hero.</h3>
+          <p class="onboarding-welcome-subtitle">Consistency beats perfection. Stay above 80%.</p>
+          <button class="btn btn-primary btn-full" style="margin-top: 24px;" onclick="App.dismissOnboarding()">Enter Game</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Daily Victory Overlay -->
+  <div id="daily-victory-overlay" class="daily-victory-overlay">
+    <div class="victory-content">
+      <div class="victory-glow" id="victory-glow-layer"></div>
+      <div class="victory-icon" id="victory-icon-element">🏆</div>
+      <h2 class="victory-title" id="victory-title-element">DAILY SUCCESS!</h2>
+      <p class="victory-message" id="victory-message-text">Consistency Beats Perfection</p>
+      
+      <div class="victory-stats">
+        <div class="victory-stat-item">
+          <span class="victory-stat-val" id="victory-xp-earned">+0</span>
+          <span class="victory-stat-lbl">XP Gained</span>
+        </div>
+        <div class="victory-stat-item">
+          <span class="victory-stat-val" id="victory-streak">0</span>
+          <span class="victory-stat-lbl">Streak</span>
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-full" onclick="App.dismissDailyVictory()">Continue</button>
+    </div>
+  </div>
+
+  <!-- App Container -->
+  <div id="app" class="app">
+
+    <!-- ==================== TODAY SCREEN ==================== -->
+    <div id="screen-today" class="screen active">
+      <div class="screen-scroll">
+        <div class="screen-header">
+          <h1 class="app-title">PROJECT <span class="highlight">HUMAN</span></h1>
+          <p class="app-tagline">Build Your Character</p>
+        </div>
+
+        <!-- Character Overview Card (Prominent Top Section) -->
+        <div class="character-overview-card" id="character-overview-card">
+          <div class="char-overview-header">
+            <div class="char-identity">
+              <h2 class="char-name-display" id="today-char-name">Character Name</h2>
+              <span class="char-rank-badge" id="today-char-rank">Civilian</span>
+            </div>
+            <div class="char-level-badge">
+              <span class="char-level-label">Level</span>
+              <span class="char-level-val" id="stat-level">1</span>
+            </div>
+          </div>
+          <div class="char-xp-section">
+            <div class="char-xp-info">
+              <span class="char-xp-label">XP Progress</span>
+              <span class="char-xp-numbers"><span id="xp-bar-current">0</span> / <span id="xp-bar-next">100</span> XP</span>
+            </div>
+            <div class="xp-bar">
+              <div class="xp-bar-fill" id="xp-bar-fill"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top Metrics (Streak & Today Completion) -->
+        <div class="top-metrics-grid">
+          <div class="stat-card stat-streak">
+            <div class="stat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></div>
+            <div class="stat-value" id="stat-streak">0</div>
+            <div class="stat-label">Day Streak</div>
+          </div>
+          <div class="stat-card stat-completion">
+            <div class="stat-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+            <div class="stat-value" id="stat-completion">0%</div>
+            <div class="stat-label">Today's Completion</div>
+          </div>
+        </div>
+
+        <!-- Completion Target Card -->
+        <div class="completion-target-card" id="completion-target-card">
+          <div class="target-card-header">
+            <span class="target-card-title">🎯 Completion Target</span>
+            <span class="target-card-status" id="dashboard-target-status">On Track ✅</span>
+          </div>
+          <div class="target-card-body">
+            <div class="target-card-metric">
+              <span class="target-metric-value">80%</span>
+              <span class="target-metric-label">Monthly Target</span>
+            </div>
+            <div class="target-card-divider"></div>
+            <div class="target-card-metric">
+              <span class="target-metric-value" id="dashboard-target-current">0%</span>
+              <span class="target-metric-label">Current Monthly</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Character Stats Card -->
+        <div class="character-stats-card">
+          <div class="stats-progress-list">
+            <div class="stat-progress-item strength">
+              <span class="stat-name">💪 Strength</span>
+              <div class="stat-bar"><div class="stat-fill" id="stat-strength-fill" style="width: 0%"></div></div>
+              <span class="stat-value" id="stat-strength-val">Lv. 1</span>
+            </div>
+            <div class="stat-progress-item intelligence">
+              <span class="stat-name">🧠 Intelligence</span>
+              <div class="stat-bar"><div class="stat-fill" id="stat-intelligence-fill" style="width: 0%"></div></div>
+              <span class="stat-value" id="stat-intelligence-val">Lv. 1</span>
+            </div>
+            <div class="stat-progress-item wealth">
+              <span class="stat-name">💰 Wealth</span>
+              <div class="stat-bar"><div class="stat-fill" id="stat-wealth-fill" style="width: 0%"></div></div>
+              <span class="stat-value" id="stat-wealth-val">Lv. 1</span>
+            </div>
+            <div class="stat-progress-item discipline">
+              <span class="stat-name">🛡️ Discipline</span>
+              <div class="stat-bar"><div class="stat-fill" id="stat-discipline-fill" style="width: 0%"></div></div>
+              <span class="stat-value" id="stat-discipline-val">Lv. 1</span>
+            </div>
+            <div class="stat-progress-item social">
+              <span class="stat-name">🌍 Social</span>
+              <div class="stat-bar"><div class="stat-fill" id="stat-social-fill" style="width: 0%"></div></div>
+              <span class="stat-value" id="stat-social-val">Lv. 1</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-divider">
+          <h2 class="section-title">Today's Actions</h2>
+        </div>
+
+        <div id="today-actions" class="today-actions"></div>
+
+        <div id="today-empty" class="empty-state" style="display:none;">
+          <div class="empty-icon">🎯</div>
+          <h3 class="empty-title">No Actions Today</h3>
+          <p class="empty-desc">Create missions and actions to start building your character.</p>
+          <button class="btn btn-primary" onclick="App.switchTab('missions')">Create Mission</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== MISSIONS SCREEN ==================== -->
+    <div id="screen-missions" class="screen">
+      <div class="screen-scroll">
+        <div class="screen-header" style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
+          <div>
+            <h1>Missions</h1>
+            <p class="screen-subtitle">Your path to becoming legendary.</p>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="App.showCreateMission()" id="header-create-mission-btn" style="flex-shrink: 0;">Create Mission</button>
+        </div>
+
+        <div id="missions-list" class="missions-list"></div>
+
+        <div id="missions-empty" class="empty-state" style="display:none;" onclick="App.showCreateMission()">
+          <div class="empty-icon">🚀</div>
+          <h3 class="empty-title">No Missions Yet</h3>
+          <p class="empty-desc">Create your first mission to begin your journey.</p>
+          <button class="btn btn-primary" style="margin-top: 16px;" onclick="event.stopPropagation(); App.showCreateMission();">Create First Mission</button>
+        </div>
+      </div>
+
+      <button id="fab-mission" class="fab fab-secondary" onclick="App.showCreateMission()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+
+    <!-- ==================== MISSION DETAIL SCREEN ==================== -->
+    <div id="screen-mission-detail" class="screen">
+      <div class="screen-scroll">
+        <div class="screen-header with-back">
+          <button class="btn-back" onclick="App.goBackToMissions()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <h1 id="mission-detail-title">Mission</h1>
+          <div class="header-actions">
+            <button class="btn-icon" onclick="App.editCurrentMission()" title="Edit">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button class="btn-icon btn-icon-danger" onclick="App.deleteCurrentMission()" title="Delete">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div id="mission-detail-progress" class="mission-progress-section"></div>
+
+        <div id="mission-detail-content" class="mission-detail-content"></div>
+      </div>
+
+      <button class="fab" onclick="App.showAddToMission()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+
+    <!-- ==================== PROGRESS SCREEN ==================== -->
+    <div id="screen-progress" class="screen">
+      <div class="screen-scroll">
+        <div class="screen-header">
+          <h1>Progress</h1>
+          <p class="screen-subtitle">Track your evolution.</p>
+        </div>
+
+        <div class="progress-ring-container">
+          <svg class="progress-ring" viewBox="0 0 140 140">
+            <defs>
+              <linearGradient id="ring-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#4f8cff"/>
+                <stop offset="100%" stop-color="#a855f7"/>
+              </linearGradient>
+            </defs>
+            <circle class="progress-ring-bg" cx="70" cy="70" r="60"/>
+            <circle class="progress-ring-fill" id="progress-ring-fill" cx="70" cy="70" r="60"/>
+          </svg>
+          <div class="progress-ring-text">
+            <span class="progress-ring-value" id="progress-ring-value">0%</span>
+            <span class="progress-ring-label">Monthly</span>
+          </div>
+        </div>
+
+        <div class="completion-bars">
+          <div class="completion-bar-item">
+            <div class="completion-bar-header">
+              <span class="completion-bar-label">Daily</span>
+              <span class="completion-bar-value" id="daily-completion">0%</span>
+            </div>
+            <div class="completion-bar-track"><div class="completion-bar-fill bar-daily" id="daily-bar"></div></div>
+          </div>
+          <div class="completion-bar-item">
+            <div class="completion-bar-header">
+              <span class="completion-bar-label">Weekly</span>
+              <span class="completion-bar-value" id="weekly-completion">0%</span>
+            </div>
+            <div class="completion-bar-track"><div class="completion-bar-fill bar-weekly" id="weekly-bar"></div></div>
+          </div>
+          <div class="completion-bar-item">
+            <div class="completion-bar-header">
+              <span class="completion-bar-label">Monthly</span>
+              <span class="completion-bar-value" id="monthly-completion">0%</span>
+            </div>
+            <div class="completion-bar-track"><div class="completion-bar-fill bar-monthly" id="monthly-bar"></div></div>
+          </div>
+          <div class="completion-bar-item">
+            <div class="completion-bar-header">
+              <span class="completion-bar-label">Yearly</span>
+              <span class="completion-bar-value" id="yearly-completion">0%</span>
+            </div>
+            <div class="completion-bar-track"><div class="completion-bar-fill bar-yearly" id="yearly-bar"></div></div>
+          </div>
+        </div>
+
+        <!-- Target Analysis Panel -->
+        <div class="progress-target-card">
+          <div class="progress-target-header">
+            <h3>Target Completion Analysis</h3>
+            <span class="target-badge">Monthly Target: 80%</span>
+          </div>
+          <div class="progress-target-body">
+            <div class="progress-target-item">
+              <span class="progress-target-value" id="progress-target-current">0%</span>
+              <span class="progress-target-label">Current Completion</span>
+            </div>
+            <div class="progress-target-divider"></div>
+            <div class="progress-target-item">
+              <span class="progress-target-gap" id="progress-target-gap">+0%</span>
+              <span class="progress-target-label">Gap to Target</span>
+            </div>
+          </div>
+          <div class="progress-target-footer" id="progress-target-indicator">
+            Consistency Beats Perfection
+          </div>
+        </div>
+
+        <div class="progress-stats-grid">
+          <div class="progress-stat-card">
+            <div class="progress-stat-value" id="progress-total-xp">0</div>
+            <div class="progress-stat-label">Total XP</div>
+          </div>
+          <div class="progress-stat-card">
+            <div class="progress-stat-value" id="progress-total-actions">0</div>
+            <div class="progress-stat-label">Actions Done</div>
+          </div>
+          <div class="progress-stat-card">
+            <div class="progress-stat-value" id="progress-total-missions">0</div>
+            <div class="progress-stat-label">Active Missions</div>
+          </div>
+          <div class="progress-stat-card">
+            <div class="progress-stat-value" id="progress-best-streak">0</div>
+            <div class="progress-stat-label">Best Streak</div>
+          </div>
+        </div>
+
+        <div class="section-divider">
+          <h2 class="section-title">Mission Progress</h2>
+        </div>
+        <div id="progress-missions-list" class="progress-missions-list"></div>
+      </div>
+    </div>
+
+    <!-- ==================== PROFILE SCREEN ==================== -->
+    <div id="screen-profile" class="screen">
+      <div class="screen-scroll">
+        <div class="screen-header">
+          <h1>Profile</h1>
+        </div>
+
+        <!-- Google Account Card at the very top -->
+        <div class="settings-section" style="margin: var(--spacing-sm) var(--spacing-md) var(--spacing-lg);">
+          <div class="cloud-sync-card" id="cloud-sync-card" style="padding: var(--spacing-lg) var(--spacing-md);">
+            <!-- Logged Out State -->
+            <div id="cloud-logged-out" class="cloud-state-content" style="display: flex; flex-direction: column; align-items: center; text-align: center;">
+              <p class="cloud-desc" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: var(--spacing-md); line-height: 1.5;">Sign in to sync your progress across devices.</p>
+              <button class="btn google-btn btn-full" onclick="App.signInWithGoogle()" style="display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; max-width: 290px; height: 44px; font-size: 0.85rem; font-weight: 600; border-radius: var(--radius-md); box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: transform 0.2s, background 0.2s;">
+                <svg class="google-icon" viewBox="0 0 24 24" width="18" height="18" style="margin-right: 0; flex-shrink: 0;">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                </svg>
+                <span>Continue with Google</span>
+              </button>
+            </div>
+            <!-- Logged In State -->
+            <div id="cloud-logged-in" class="cloud-state-content" style="display: none;">
+              <div class="cloud-user-row" style="display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-md); flex-wrap: wrap; width: 100%;">
+                <div class="cloud-user-details" style="display: flex; align-items: center; gap: var(--spacing-md);">
+                  <img id="cloud-user-avatar" class="cloud-avatar" src="" alt="Avatar" style="width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.02);">
+                  <div class="cloud-user-info" style="display: flex; flex-direction: column; gap: 2px;">
+                    <span id="cloud-user-name" class="cloud-name" style="font-weight: 600; color: #fff; font-size: 0.85rem;">Hero</span>
+                    <span id="cloud-user-email" class="cloud-email" style="color: var(--text-muted); font-size: 0.72rem;">hero@gmail.com</span>
+                  </div>
+                </div>
+                <button class="btn btn-outline btn-sm" onclick="App.signOut()">Sign Out</button>
+              </div>
+            </div>
+            <!-- Offline status warning (hidden by default) -->
+            <div id="cloud-offline-msg" style="display: none; align-items: center; justify-content: center; gap: 6px; margin-top: 12px; font-size: 0.72rem; color: var(--text-secondary);">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #f59e0b; flex-shrink: 0;"><path d="M17 18a5 5 0 0 0-1-9.9C15 3.9 11.2 1 7 1c-4.4 0-8 3.6-8 8 0 1.1.2 2.1.6 3.1C1.2 14.1 3 16 5.5 16H17Z"/></svg>
+              <span>Changes will sync automatically.</span>
+            </div>
+          </div>
+        </div>
+
+
+        <div class="profile-hero">
+          <h2 id="profile-char-name" style="margin-bottom: var(--spacing-xs);">Character Name</h2>
+          <p class="screen-subtitle" id="profile-char-subtitle" style="margin-bottom: var(--spacing-md);">Civilian • Scholar</p>
+          <div class="level-badge-large">
+            <svg class="xp-ring" viewBox="0 0 140 140">
+              <defs>
+                <linearGradient id="xp-ring-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#f59e0b"/>
+                  <stop offset="100%" stop-color="#f43f5e"/>
+                </linearGradient>
+              </defs>
+              <circle class="xp-ring-bg" cx="70" cy="70" r="60"/>
+              <circle class="xp-ring-fill" id="xp-ring-fill" cx="70" cy="70" r="60"/>
+            </svg>
+            <div class="level-badge-text">
+              <span class="level-number" id="profile-level">1</span>
+              <span class="level-label">LEVEL</span>
+            </div>
+          </div>
+          <div class="xp-info">
+            <span id="profile-xp-current">0</span> / <span id="profile-xp-next">100</span> XP
+          </div>
+        </div>
+
+        <div class="profile-stats-grid">
+          <div class="profile-stat">
+            <div class="profile-stat-value" id="profile-total-xp">0</div>
+            <div class="profile-stat-label">Total XP</div>
+          </div>
+          <div class="profile-stat">
+            <div class="profile-stat-value" id="profile-streak">0</div>
+            <div class="profile-stat-label">Current Streak</div>
+          </div>
+          <div class="profile-stat">
+            <div class="profile-stat-value" id="profile-longest-streak">0</div>
+            <div class="profile-stat-label">Longest Streak</div>
+          </div>
+          <div class="profile-stat">
+            <div class="profile-stat-value" id="profile-actions-done">0</div>
+            <div class="profile-stat-label">Actions Done</div>
+          </div>
+          <div class="profile-stat">
+            <div class="profile-stat-value" id="profile-achievements-count">0</div>
+            <div class="profile-stat-label">Achievements</div>
+          </div>
+        </div>
+
+        <div class="section-divider">
+          <h2 class="section-title">Character Stats</h2>
+        </div>
+        <div class="character-stats-card" style="margin: 0 var(--spacing-md) var(--spacing-lg);">
+          <div class="stats-progress-list">
+            <div class="stat-progress-item strength">
+              <span class="stat-name">💪 Strength</span>
+              <div class="stat-bar"><div class="stat-fill" id="profile-strength-fill" style="width: 0%"></div></div>
+              <span class="stat-value" id="profile-strength-val">0 XP</span>
+            </div>
+            <div class="stat-progress-item intelligence">
+              <span class="stat-name">🧠 Intelligence</span>
+              <div class="stat-bar"><div class="stat-fill" id="profile-intelligence-fill" style="width: 0%"></div></div>
+              <span class="stat-value" id="profile-intelligence-val">0 XP</span>
+            </div>
+            <div class="stat-progress-item wealth">
+              <span class="stat-name">💰 Wealth</span>
+              <div class="stat-bar"><div class="stat-fill" id="profile-wealth-fill" style="width: 0%"></div></div>
+              <span class="stat-value" id="profile-wealth-val">0 XP</span>
+            </div>
+            <div class="stat-progress-item discipline">
+              <span class="stat-name">🛡️ Discipline</span>
+              <div class="stat-bar"><div class="stat-fill" id="profile-discipline-fill" style="width: 0%"></div></div>
+              <span class="stat-value" id="profile-discipline-val">0 XP</span>
+            </div>
+            <div class="stat-progress-item social">
+              <span class="stat-name">🌍 Social</span>
+              <div class="stat-bar"><div class="stat-fill" id="profile-social-fill" style="width: 0%"></div></div>
+              <span class="stat-value" id="profile-social-val">0 XP</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-divider">
+          <h2 class="section-title">Achievements</h2>
+        </div>
+        <div id="achievements-grid" class="achievements-grid"></div>
+
+        <!-- Cloud Sync has been moved to the top of the Profile screen -->
+
+
+
+        <div class="app-footer">
+          <p>Project Human v1.0</p>
+          <p>Build Your Character.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav id="bottom-nav" class="bottom-nav">
+    <button class="nav-item active" data-screen="today" onclick="App.switchTab('today')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span>Today</span>
+    </button>
+    <button class="nav-item" data-screen="missions" onclick="App.switchTab('missions')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+      <span>Missions</span>
+    </button>
+    <button class="nav-item" data-screen="progress" onclick="App.switchTab('progress')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span>Progress</span>
+    </button>
+    <button class="nav-item" data-screen="profile" onclick="App.switchTab('profile')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>Profile</span>
+    </button>
+  </nav>
+
+  <!-- Modal Overlay -->
+  <div id="modal-overlay" class="modal-overlay" onclick="App.handleModalOverlayClick(event)">
+    <div id="modal-content" class="modal-content" onclick="event.stopPropagation()"></div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
