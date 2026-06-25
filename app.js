@@ -16,7 +16,7 @@ import {
   getDocs,
   onSnapshot,
   writeBatch
-} from './firebase.js';
+} from './firebase.js?v=1.0.2';
 
 const App = (() => {
   'use strict';
