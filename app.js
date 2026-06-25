@@ -4,6 +4,8 @@ import {
   isFirebaseEnabled,
   googleProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   collection,
@@ -218,6 +220,19 @@ const App = (() => {
   function initFirebase() {
     if (isFirebaseEnabled && auth) {
       onAuthStateChanged(auth, handleAuthStateChange);
+      
+      // Handle Google Sign-In redirect result when app loads
+      getRedirectResult(auth)
+        .then((result) => {
+          if (result && result.user) {
+            console.log("Redirect sign-in successful:", result.user.uid);
+            showToast("Logged in with Google!", "success");
+          }
+        })
+        .catch((e) => {
+          console.error("Redirect sign-in failed:", e);
+          showToast("Sign-in failed: " + e.message, "error");
+        });
     } else {
       console.warn("Firebase not enabled. Running in Local Storage Mode.");
     }
@@ -439,12 +454,28 @@ const App = (() => {
       showToast("Cloud sync is not configured.", "error");
       return;
     }
-    signInWithPopup(auth, googleProvider)
-      .then(() => showToast("Logged in with Google!", "success"))
-      .catch(e => {
-        console.error("Sign-in failed:", e);
-        showToast("Sign-in failed: " + e.message, "error");
-      });
+    
+    // Check if mobile or standalone/Android wrapper
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+      || localStorage.getItem('isAndroidApp') === 'true'
+      || window.matchMedia('(display-mode: standalone)').matches;
+
+    if (isMobile) {
+      console.log("Initiating Google Sign-In with redirect...");
+      signInWithRedirect(auth, googleProvider)
+        .catch(e => {
+          console.error("Sign-in with redirect failed:", e);
+          showToast("Sign-in failed: " + e.message, "error");
+        });
+    } else {
+      console.log("Initiating Google Sign-In with popup...");
+      signInWithPopup(auth, googleProvider)
+        .then(() => showToast("Logged in with Google!", "success"))
+        .catch(e => {
+          console.error("Sign-in with popup failed:", e);
+          showToast("Sign-in failed: " + e.message, "error");
+        });
+    }
   }
 
   function signOut() {
@@ -2623,6 +2654,16 @@ const App = (() => {
       showOnboarding();
     } else {
       renderTodayScreen();
+    }
+
+    // Android TWA integration: deep-link parser and platform state setup
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('utm_source') === 'android-app') {
+      localStorage.setItem('isAndroidApp', 'true');
+    }
+    const targetTab = urlParams.get('tab');
+    if (targetTab && ['today', 'missions', 'progress', 'profile'].includes(targetTab)) {
+      switchTab(targetTab);
     }
   }
 

@@ -1,0 +1,14 @@
+# Android build and local files
+android/.gradle/
+android/local.properties
+android/app/build/
+android/build/
+android/.idea/
+android/*/build/
+*.apk
+*.aar
+*.aab
+
+# OS files
+.DS_Store
+Thumbs.db

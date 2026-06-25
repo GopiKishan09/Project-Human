@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0a0a0f"
+    android:padding="24dp">
+
+    <!-- Center Offline Illustration and Text -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:layout_centerInParent="true">
+
+        <!-- Offline Icon -->
+        <ImageView
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:src="@android:drawable/stat_sys_warning"
+            android:tint="#4f8cff"
+            android:layout_marginBottom="24dp"
+            android:contentDescription="No Connection" />
+
+        <!-- Title -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="No Internet Connection"
+            android:textColor="#ffffff"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:gravity="center" />
+
+        <!-- Description -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Please check your network settings and try again."
+            android:textColor="#8e8e93"
+            android:textSize="14sp"
+            android:gravity="center" />
+
+        <!-- Retry Button -->
+        <Button
+            android:id="@+id/btn_retry"
+            android:layout_width="200dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="32dp"
+            android:text="Retry"
+            android:textAllCaps="false"
+            android:textColor="#ffffff"
+            android:backgroundTint="#4f8cff"
+            android:textSize="16sp" />
+
+    </LinearLayout>
+
+</RelativeLayout>

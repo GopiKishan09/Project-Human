@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "935466733995",
+    "project_id": "project-human-c05be",
+    "storage_bucket": "project-human-c05be.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:935466733995:android:57581762ea635a418042ee",
+        "android_client_info": {
+          "package_name": "com.project.human"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "935466733995-bqsnun3b9rch5s7en3dnk8f13vgpppc9.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAAkkCYIMM2v0PzOSG8OyyIAI7i8FLDBGk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "935466733995-bqsnun3b9rch5s7en3dnk8f13vgpppc9.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
