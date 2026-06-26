@@ -14,8 +14,71 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="index.css">
   
+  <!-- Loading Screen Styles (inline for instant render) -->
+  <style>
+    .app-loading-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      background: #0a0a0f;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.4s ease, visibility 0.4s ease;
+    }
+    .app-loading-screen.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .app-loading-icon {
+      font-size: 52px;
+      animation: loadingPulse 1.2s ease-in-out infinite;
+      margin-bottom: 24px;
+    }
+    .app-loading-title {
+      color: #ffffff;
+      font-family: 'Inter', sans-serif;
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: 4px;
+      margin: 0 0 6px 0;
+    }
+    .app-loading-subtitle {
+      color: #666680;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 400;
+      margin: 0 0 40px 0;
+    }
+    .app-loading-spinner {
+      width: 28px;
+      height: 28px;
+      border: 3px solid rgba(79, 140, 255, 0.15);
+      border-top-color: #4f8cff;
+      border-radius: 50%;
+      animation: loadingSpin 0.8s linear infinite;
+    }
+    @keyframes loadingPulse {
+      0%, 100% { opacity: 0.4; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.1); }
+    }
+    @keyframes loadingSpin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
 </head>
 <body>
+
+  <!-- App Loading Screen -->
+  <div id="app-loading-screen" class="app-loading-screen">
+    <div class="app-loading-icon">⚡</div>
+    <h1 class="app-loading-title">PROJECT HUMAN</h1>
+    <p class="app-loading-subtitle">Build Your Character</p>
+    <div class="app-loading-spinner"></div>
+  </div>
+
 
   <!-- Toast Container -->
   <div id="toast-container" class="toast-container"></div>
@@ -561,5 +624,16 @@
   </div>
 
   <script type="module" src="app.js?v=1.0.2"></script>
+  <script>
+    // Hide loading screen when page is fully ready
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        var ls = document.getElementById('app-loading-screen');
+        if (ls) ls.classList.add('hidden');
+        // Remove from DOM after fade-out
+        setTimeout(function() { if (ls) ls.remove(); }, 500);
+      }, 300);
+    });
+  </script>
 </body>
 </html>
