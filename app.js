@@ -247,25 +247,12 @@ const App = (() => {
       console.log("User logged in:", userId);
       currentUserIdForMigration = userId;
       
-      const hasLocalData = localStorage.getItem(STORAGE_KEYS.profile) && 
-                           JSON.parse(localStorage.getItem(STORAGE_KEYS.profile)).charName;
-      
-      // Check cloud data first
+      // Check cloud data
       let cloudHasCharName = false;
       try {
         const userDocRef = doc(db, 'users', userId);
         const docSnap = await getDoc(userDocRef);
         cloudHasCharName = docSnap.exists() && docSnap.data().charName;
-        
-        if (hasLocalData) {
-          if (cloudHasCharName) {
-            console.log("Sync choice: Auto-Merge Both");
-            await migrateLocalStorageToFirestore(userId, true);
-          } else {
-            console.log("Sync choice: Auto-Import Local");
-            await migrateLocalStorageToFirestore(userId, false);
-          }
-        }
       } catch (e) {
         console.error("Error during automatic sync/migration:", e);
       }
@@ -278,19 +265,19 @@ const App = (() => {
         authOverlay.classList.remove('show');
       }
 
-      // Handle overlays based on data presence
-      if (cloudHasCharName || hasLocalData) {
+      // Handle overlays based on cloud data presence
+      if (cloudHasCharName) {
         const onboardingOverlay = document.getElementById('onboarding-overlay');
         if (onboardingOverlay && onboardingOverlay.classList.contains('show')) {
           onboardingOverlay.classList.remove('show');
         }
         // Only show toast if we are actually completing a new sign in
         if (!authResolved) {
-          showToast(`Welcome back, ${state.profile.charName || 'Warrior'}! Data synced ✅`, 'success');
+          showToast(`Welcome back, ${state.profile.charName || 'Warrior'}`, 'success');
         }
         renderTodayScreen();
       } else {
-        // New user with no data
+        // New user with no cloud data
         showOnboarding();
       }
       authResolved = true;
@@ -476,7 +463,7 @@ const App = (() => {
           overlayDismissed = true;
         }
         if (overlayDismissed) {
-          showToast(`Welcome back, ${state.profile.charName}! Data synced ✅`, 'success');
+          showToast(`Welcome back, ${state.profile.charName}`, 'success');
           renderTodayScreen();
         }
       }
@@ -533,7 +520,7 @@ const App = (() => {
     } else {
       console.log("Initiating Google Sign-In with popup...");
       signInWithPopup(auth, googleProvider)
-        .then(() => { showToast("Logged in with Google!", "success"); restoreBtn(); })
+        .then(() => { showToast("Logged in with Google", "success"); restoreBtn(); })
         .catch(e => {
           console.error("Sign-in with popup failed:", e);
           showToast("Sign-in failed: " + e.message, "error");
@@ -545,7 +532,10 @@ const App = (() => {
   function signOut() {
     if (!isFirebaseEnabled) return;
     firebaseSignOut(auth)
-      .then(() => showToast("Logged out.", "default"))
+      .then(() => {
+        localStorage.clear();
+        window.location.reload();
+      })
       .catch(e => {
         console.error("Sign-out failed:", e);
         showToast("Sign-out failed: " + e.message, "error");
@@ -2825,12 +2815,8 @@ const App = (() => {
           }
         }, 100);
       } else {
-        // Firebase disabled mode (fallback)
-        if (!state.profile.charName) {
-          showOnboarding();
-        } else {
-          renderTodayScreen();
-        }
+        // Firebase disabled mode (fallback) is removed. Force sign in.
+        document.getElementById('auth-overlay').classList.add('show');
       }
     } else {
       renderTodayScreen();

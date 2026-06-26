@@ -2867,18 +2867,50 @@ button:focus-visible,
   gap: var(--spacing-md);
 }
 
-.auth-btn {
+.auth-btn-google {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
   height: 54px;
+  width: 100%;
   font-size: 1.05rem;
-  font-weight: 600;
+  font-weight: 700;
+  color: #111;
+  background: #ffffff;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.auth-btn svg {
+.auth-btn-google:hover {
+  background: #f1f1f1;
+  transform: translateY(-2px);
+}
+
+.auth-btn-google svg {
   flex-shrink: 0;
+}
+
+.auth-btn-secondary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 54px;
+  width: 100%;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.auth-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .auth-footer {
