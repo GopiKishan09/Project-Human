@@ -2789,7 +2789,7 @@ const App = (() => {
         
         const authTimeout = setTimeout(() => {
           if (!authResolved) {
-            // Auth didn't resolve in time, show auth screen
+            // Auth didn't resolve in time, force show auth screen
             if (loadingScreen) { loadingScreen.classList.add('hidden'); setTimeout(() => loadingScreen.remove(), 500); }
             document.getElementById('auth-overlay').classList.add('show');
           }
@@ -2801,17 +2801,7 @@ const App = (() => {
             clearTimeout(authTimeout);
             clearInterval(checkInterval);
             if (loadingScreen) { loadingScreen.classList.add('hidden'); setTimeout(() => loadingScreen.remove(), 500); }
-            
-            if (!auth.currentUser) {
-              // User is NOT logged in. Must sign in first.
-              document.getElementById('auth-overlay').classList.add('show');
-            } else if (!state.profile.charName) {
-              // User IS logged in, but no profile exists
-              showOnboarding();
-            } else {
-              // Logged in and profile exists
-              renderTodayScreen();
-            }
+            // handleAuthStateChange handles the actual screen routing (Onboarding vs Dashboard vs Auth)
           }
         }, 100);
       } else {
