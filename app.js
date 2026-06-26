@@ -266,19 +266,13 @@ const App = (() => {
       }
 
       // Handle overlays based on cloud data presence
-      if (cloudHasCharName) {
-        const onboardingOverlay = document.getElementById('onboarding-overlay');
-        if (onboardingOverlay && onboardingOverlay.classList.contains('show')) {
-          onboardingOverlay.classList.remove('show');
-        }
-        // Only show toast if we are actually completing a new sign in
-        if (!authResolved) {
-          showToast(`Welcome back, ${state.profile.charName || 'Warrior'}`, 'success');
-        }
-        renderTodayScreen();
-      } else {
+      if (!cloudHasCharName) {
         // New user with no cloud data
+        hideLoadingScreen();
         showOnboarding();
+      } else {
+        // For existing users, just wait for triggerUIRefresh()
+        // which will hide loading screen and render dashboard
       }
       authResolved = true;
     } else {
@@ -296,6 +290,7 @@ const App = (() => {
       if (document.getElementById('auth-overlay')) {
         document.getElementById('auth-overlay').classList.add('show');
       }
+      hideLoadingScreen();
     }
     
     triggerUIRefresh();
@@ -450,7 +445,8 @@ const App = (() => {
       recalculateStreak();
       renderCurrentScreen();
       // If auth resolved and cloud data arrived, dismiss overlays if showing
-      if (state.profile.charName) {
+      if (state.profile && state.profile.charName) {
+        hideLoadingScreen();
         const onboardingOverlay = document.getElementById('onboarding-overlay');
         const authOverlay = document.getElementById('auth-overlay');
         let overlayDismissed = false;
@@ -464,7 +460,6 @@ const App = (() => {
         }
         if (overlayDismissed) {
           showToast(`Welcome back, ${state.profile.charName}`, 'success');
-          renderTodayScreen();
         }
       }
     }, 50);
@@ -486,14 +481,14 @@ const App = (() => {
     }
   }
 
-  function signInWithGoogle() {
+  function signInWithGoogle(event) {
     if (!isFirebaseEnabled) {
       showToast("Cloud sync is not configured.", "error");
       return;
     }
     
     // Show loading state on sign-in button
-    const signInBtn = document.querySelector('.google-signin-btn, [onclick*="signInWithGoogle"]');
+    const signInBtn = (event && event.currentTarget) ? event.currentTarget : document.querySelector('.auth-btn-google');
     const originalBtnText = signInBtn ? signInBtn.innerHTML : '';
     if (signInBtn) {
       signInBtn.innerHTML = '<span class="app-loading-spinner" style="width:20px;height:20px;display:inline-block;border:2px solid rgba(255,255,255,0.2);border-top-color:#fff;border-radius:50%;animation:loadingSpin 0.8s linear infinite;"></span> Signing in...';
@@ -2767,8 +2762,16 @@ const App = (() => {
   }
 
   // ---------------------------------------------------------------------------
-  // Initialization
+  // Initialization & UI Utilities
   // ---------------------------------------------------------------------------
+  function hideLoadingScreen() {
+    const loadingScreen = document.getElementById('app-loading-screen');
+    if (loadingScreen && !loadingScreen.classList.contains('hidden')) {
+      loadingScreen.classList.add('hidden');
+      setTimeout(() => { if (loadingScreen.parentNode) loadingScreen.remove(); }, 500);
+    }
+  }
+
   function init() {
     loadAll();
     recalculateStreak();
@@ -2790,7 +2793,7 @@ const App = (() => {
         const authTimeout = setTimeout(() => {
           if (!authResolved) {
             // Auth didn't resolve in time, force show auth screen
-            if (loadingScreen) { loadingScreen.classList.add('hidden'); setTimeout(() => loadingScreen.remove(), 500); }
+            hideLoadingScreen();
             document.getElementById('auth-overlay').classList.add('show');
           }
         }, 4000);
@@ -2800,7 +2803,6 @@ const App = (() => {
           if (authResolved) {
             clearTimeout(authTimeout);
             clearInterval(checkInterval);
-            if (loadingScreen) { loadingScreen.classList.add('hidden'); setTimeout(() => loadingScreen.remove(), 500); }
             // handleAuthStateChange handles the actual screen routing (Onboarding vs Dashboard vs Auth)
           }
         }, 100);
