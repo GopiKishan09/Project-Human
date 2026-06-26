@@ -2,31 +2,25 @@ package com.project.human
 
 import android.annotation.SuppressLint
 import android.content.Intent
-import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.view.KeyEvent
-import android.view.View
 import android.webkit.CookieManager
-import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
-import android.widget.ProgressBar
 import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
-    private lateinit var progressBar: ProgressBar
 
     companion object {
         private const val BASE_URL = "https://project-human.netlify.app/"
-        private const val WEB_VIEW_STATE_KEY = "webViewState"
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -37,27 +31,11 @@ class MainActivity : AppCompatActivity() {
         window.statusBarColor = Color.parseColor("#0a0a0f")
         window.navigationBarColor = Color.parseColor("#0a0a0f")
 
-        // Build layout programmatically — no XML needed
+        // Fullscreen WebView — no extra UI elements
         val rootLayout = FrameLayout(this).apply {
             setBackgroundColor(Color.parseColor("#0a0a0f"))
         }
 
-        // Thin progress bar at the top
-        progressBar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
-            layoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                6
-            )
-            isIndeterminate = false
-            max = 100
-            progressDrawable.setColorFilter(
-                Color.parseColor("#4f8cff"),
-                android.graphics.PorterDuff.Mode.SRC_IN
-            )
-            visibility = View.GONE
-        }
-
-        // WebView — fullscreen, no browser chrome
         webView = WebView(this).apply {
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
@@ -67,10 +45,9 @@ class MainActivity : AppCompatActivity() {
         }
 
         rootLayout.addView(webView)
-        rootLayout.addView(progressBar)
         setContentView(rootLayout)
 
-        // Configure WebView settings for full app-like experience
+        // Configure WebView settings
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
@@ -84,13 +61,16 @@ class MainActivity : AppCompatActivity() {
             loadWithOverviewMode = true
             mediaPlaybackRequiresUserGesture = false
 
-            // Make it feel native — no zoom controls
+            // No zoom controls — native feel
             setSupportZoom(false)
             builtInZoomControls = false
             displayZoomControls = false
 
-            // User agent — append app identifier
-            userAgentString = "$userAgentString ProjectHumanApp/1.0"
+            // Fix Google Sign-In 403 disallowed_useragent:
+            // Remove WebView markers so Google treats this as a regular browser
+            userAgentString = userAgentString
+                .replace("; wv)", ")")
+                .replace("Version/4.0 ", "")
         }
 
         // Enable cookies for Firebase Auth
@@ -99,30 +79,8 @@ class MainActivity : AppCompatActivity() {
             setAcceptThirdPartyCookies(webView, true)
         }
 
-        // Progress bar handling
-        webView.webChromeClient = object : WebChromeClient() {
-            override fun onProgressChanged(view: WebView?, newProgress: Int) {
-                if (newProgress < 100) {
-                    progressBar.visibility = View.VISIBLE
-                    progressBar.progress = newProgress
-                } else {
-                    progressBar.visibility = View.GONE
-                }
-            }
-        }
-
         // Handle navigation — keep everything inside the app
         webView.webViewClient = object : WebViewClient() {
-
-            override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
-                super.onPageStarted(view, url, favicon)
-                progressBar.visibility = View.VISIBLE
-            }
-
-            override fun onPageFinished(view: WebView?, url: String?) {
-                super.onPageFinished(view, url)
-                progressBar.visibility = View.GONE
-            }
 
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val url = request?.url?.toString() ?: return false
@@ -153,7 +111,6 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
-                // Only handle main frame errors
                 if (request?.isForMainFrame == true) {
                     super.onReceivedError(view, request, error)
                 }
@@ -164,8 +121,7 @@ class MainActivity : AppCompatActivity() {
         if (savedInstanceState != null) {
             webView.restoreState(savedInstanceState)
         } else {
-            val url = buildLaunchUrl()
-            webView.loadUrl(url)
+            webView.loadUrl(buildLaunchUrl())
         }
     }
 
@@ -189,7 +145,6 @@ class MainActivity : AppCompatActivity() {
         return builder.build().toString()
     }
 
-    // Handle back button — navigate within WebView history first
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         if (keyCode == KeyEvent.KEYCODE_BACK && webView.canGoBack()) {
             webView.goBack()
