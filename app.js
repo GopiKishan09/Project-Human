@@ -272,17 +272,28 @@ const App = (() => {
       
       setupSync(userId);
       syncActive = true;
-      authResolved = true;
+      // Dismiss auth overlay if it's showing
+      const authOverlay = document.getElementById('auth-overlay');
+      if (authOverlay && authOverlay.classList.contains('show')) {
+        authOverlay.classList.remove('show');
+      }
 
-      // If onboarding is showing but cloud has data, dismiss it
+      // Handle overlays based on data presence
       if (cloudHasCharName || hasLocalData) {
         const onboardingOverlay = document.getElementById('onboarding-overlay');
         if (onboardingOverlay && onboardingOverlay.classList.contains('show')) {
           onboardingOverlay.classList.remove('show');
+        }
+        // Only show toast if we are actually completing a new sign in
+        if (!authResolved) {
           showToast(`Welcome back, ${state.profile.charName || 'Warrior'}! Data synced ✅`, 'success');
         }
         renderTodayScreen();
+      } else {
+        // New user with no data
+        showOnboarding();
       }
+      authResolved = true;
     } else {
       console.log("User logged out");
       currentUserIdForMigration = null;
@@ -293,6 +304,10 @@ const App = (() => {
         unsubscribeList = [];
         syncActive = false;
         loadAll();
+      }
+      // Show auth screen if logged out
+      if (document.getElementById('auth-overlay')) {
+        document.getElementById('auth-overlay').classList.add('show');
       }
     }
     
@@ -447,11 +462,20 @@ const App = (() => {
       rebuildStatsFromCompletions();
       recalculateStreak();
       renderCurrentScreen();
-      // If auth resolved and cloud data arrived, dismiss onboarding if it's showing
+      // If auth resolved and cloud data arrived, dismiss overlays if showing
       if (state.profile.charName) {
         const onboardingOverlay = document.getElementById('onboarding-overlay');
+        const authOverlay = document.getElementById('auth-overlay');
+        let overlayDismissed = false;
         if (onboardingOverlay && onboardingOverlay.classList.contains('show')) {
           onboardingOverlay.classList.remove('show');
+          overlayDismissed = true;
+        }
+        if (authOverlay && authOverlay.classList.contains('show')) {
+          authOverlay.classList.remove('show');
+          overlayDismissed = true;
+        }
+        if (overlayDismissed) {
           showToast(`Welcome back, ${state.profile.charName}! Data synced ✅`, 'success');
           renderTodayScreen();
         }
@@ -1817,6 +1841,9 @@ const App = (() => {
     currentMissionId = null;
     closeModal();
     showToast('Mission deleted', 'default');
+    
+    // Force transition back to missions list
+    currentTab = null;
     switchTab('missions');
   }
 
@@ -2763,37 +2790,47 @@ const App = (() => {
     window.addEventListener('offline', updateConnectivityStatus);
     updateConnectivityStatus();
 
-    if (!state.profile.charName) {
-      // If Firebase is enabled, wait briefly for auth to resolve before showing onboarding
-      // This prevents showing onboarding to returning users whose cloud data hasn't loaded yet
+    if (!state.profile.charName || !auth.currentUser) {
+      // If Firebase is enabled, wait briefly for auth to resolve before deciding flow
       if (isFirebaseEnabled && auth) {
         // Show loading state while we wait for auth
         const loadingScreen = document.getElementById('app-loading-screen');
         if (loadingScreen) loadingScreen.classList.remove('hidden');
         
         const authTimeout = setTimeout(() => {
-          if (!authResolved && !state.profile.charName) {
-            // Auth didn't resolve in time, show onboarding
-            showOnboarding();
+          if (!authResolved) {
+            // Auth didn't resolve in time, show auth screen
             if (loadingScreen) { loadingScreen.classList.add('hidden'); setTimeout(() => loadingScreen.remove(), 500); }
+            document.getElementById('auth-overlay').classList.add('show');
           }
-        }, 3000);
+        }, 4000);
         
         // Check periodically if auth resolved
         const checkInterval = setInterval(() => {
-          if (authResolved || state.profile.charName) {
+          if (authResolved) {
             clearTimeout(authTimeout);
             clearInterval(checkInterval);
             if (loadingScreen) { loadingScreen.classList.add('hidden'); setTimeout(() => loadingScreen.remove(), 500); }
-            if (!state.profile.charName) {
+            
+            if (!auth.currentUser) {
+              // User is NOT logged in. Must sign in first.
+              document.getElementById('auth-overlay').classList.add('show');
+            } else if (!state.profile.charName) {
+              // User IS logged in, but no profile exists
               showOnboarding();
             } else {
+              // Logged in and profile exists
               renderTodayScreen();
             }
           }
         }, 100);
       } else {
-        showOnboarding();
+        // Firebase disabled mode (fallback)
+        if (!state.profile.charName) {
+          showOnboarding();
+        } else {
+          renderTodayScreen();
+        }
       }
     } else {
       renderTodayScreen();
