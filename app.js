@@ -87,7 +87,68 @@ const App = (() => {
   let refreshTimeout = null;
   let currentUserIdForMigration = null;
   let isImportModalOpen = false;
-  let appState = 'BOOT';
+  
+  const DEBUG_AUTH = true;
+  let _internalAppState = 'BOOT';
+
+  function getAppState() { return _internalAppState; }
+  
+  function setAppState(val) {
+    if (DEBUG_AUTH) {
+      console.log(`[${new Date().toISOString()}] TRANSITION: ${_internalAppState} ↓ ${val}`);
+    }
+    _internalAppState = val;
+    if (DEBUG_AUTH) updateDebugPanel();
+  }
+
+  function assertValidRender(target) {
+    if (!DEBUG_AUTH) return;
+    const obVisible = document.getElementById('onboarding-overlay')?.classList.contains('show');
+    const dashVisible = getAppState() === 'READY';
+    
+    if (target === 'dashboard' && getAppState() !== 'READY') {
+      console.error(`[RENDER ASSERTION FAILED] Attempted to render Dashboard while in state: ${getAppState()}`);
+    }
+    if (target === 'onboarding' && (getAppState() === 'READY' || getAppState() === 'PROFILE_FOUND')) {
+      console.error(`[RENDER ASSERTION FAILED] Attempted to render Onboarding while in state: ${getAppState()}`);
+    }
+    if (obVisible && target === 'dashboard') {
+      console.error(`[RENDER ASSERTION FAILED] Dashboard and Onboarding visible simultaneously!`);
+    }
+    
+    console.log(`[${new Date().toISOString()}] RENDER ASSERTION PASSED for ${target}. State: ${getAppState()}`);
+  }
+
+  function updateDebugPanel() {
+    if (!DEBUG_AUTH) {
+      const p = document.getElementById('ph-debug-panel');
+      if (p) p.remove();
+      return;
+    }
+    let panel = document.getElementById('ph-debug-panel');
+    if (!panel) {
+      panel = document.createElement('div');
+      panel.id = 'ph-debug-panel';
+      panel.style.cssText = 'position:fixed;bottom:10px;right:10px;background:rgba(0,0,0,0.9);color:#0f0;padding:12px;border-radius:8px;font-family:monospace;font-size:11px;z-index:999999;pointer-events:none;white-space:pre-wrap;box-shadow: 0 4px 12px rgba(0,0,0,0.5);';
+      document.body.appendChild(panel);
+    }
+    const uid = (typeof auth !== 'undefined' && auth && auth.currentUser) ? auth.currentUser.uid : 'null';
+    const profileLoaded = !!(state.profile && state.profile.charName) ? 'Yes' : 'No';
+    const lsVisible = document.getElementById('app-loading-screen') && !document.getElementById('app-loading-screen').classList.contains('hidden') ? 'Yes' : 'No';
+    const obVisible = document.getElementById('onboarding-overlay') && document.getElementById('onboarding-overlay').classList.contains('show') ? 'Yes' : 'No';
+    const dbRendered = (getAppState() === 'READY') ? 'Yes' : 'No';
+    
+    panel.textContent = `=== FSM DEBUG ===
+State: ${getAppState()}
+UID: ${uid}
+Profile: ${profileLoaded}
+Dashboard: ${dbRendered}
+Onboarding: ${obVisible}
+Loading UI: ${lsVisible}
+Listeners: ${syncActive ? 'Yes' : 'No'}
+`;
+  }
+
   let authResolved = false;
   let undoTimeout = null;
   let lastUndoCompletion = null;
@@ -243,14 +304,15 @@ const App = (() => {
         authOverlay.classList.remove('show');
       }
 
-      appState = 'PROFILE_LOADING';
+      setAppState('AUTHENTICATED');
+      setAppState('PROFILE_LOADING');
       await bootstrapUser(userId);
     } else {
       console.log("User logged out");
       currentUserIdForMigration = null;
       isImportModalOpen = false;
       
-      appState = 'UNAUTHENTICATED';
+      setAppState('UNAUTHENTICATED');
       
       // Clear in-memory state completely
       state.missions = [];
@@ -279,29 +341,55 @@ const App = (() => {
   async function bootstrapUser(userId) {
     try {
       const userDocRef = doc(db, 'users', userId);
-      const docSnap = await getDoc(userDocRef);
+      const docSnap = await (async () => { 
+  if (DEBUG_AUTH) console.log(`[${new Date().toISOString()}] FIRESTORE: Profile read started`); 
+  const res = await getDoc(userDocRef); 
+  if (DEBUG_AUTH) console.log(`[${new Date().toISOString()}] FIRESTORE: Profile exists = ${res.exists()}`); 
+  return res; 
+})()
 
       if (!docSnap.exists() || !docSnap.data().charName) {
+        setAppState('PROFILE_NOT_FOUND');
         // NEW USER
-        appState = 'NEW_USER';
+        setAppState('NEW_USER');
         
         // If it doesn't exist at all, create default profile immediately
         if (!docSnap.exists()) {
-          await setDoc(userDocRef, state.profile);
+          await (async () => {
+  if (DEBUG_AUTH) console.log(`[${new Date().toISOString()}] FIRESTORE: Profile created`);
+  return await setDoc(userDocRef, state.profile);
+})();
         }
 
         hideLoadingScreen();
         showOnboarding();
       } else {
         // EXISTING USER
+        setAppState('PROFILE_FOUND');
         state.profile = docSnap.data();
 
         // One-time fetch of all collections before rendering
         const [missionsSnap, attributesSnap, actionsSnap, completionsSnap] = await Promise.all([
-          getDocs(collection(db, 'users', userId, 'missions')),
-          getDocs(collection(db, 'users', userId, 'attributes')),
-          getDocs(collection(db, 'users', userId, 'actions')),
-          getDocs(collection(db, 'users', userId, 'completions'))
+          (async () => {
+  const r = await getDocs(collection(db, 'users', userId, 'missions'));
+  if (DEBUG_AUTH) console.log(`[${new Date().toISOString()}] FIRESTORE: Missions loaded (${r.docs.length})`);
+  return r;
+})(),
+          (async () => {
+  const r = await getDocs(collection(db, 'users', userId, 'attributes'));
+  if (DEBUG_AUTH) console.log(`[${new Date().toISOString()}] FIRESTORE: Attributes loaded (${r.docs.length})`);
+  return r;
+})(),
+          (async () => {
+  const r = await getDocs(collection(db, 'users', userId, 'actions'));
+  if (DEBUG_AUTH) console.log(`[${new Date().toISOString()}] FIRESTORE: Actions loaded (${r.docs.length})`);
+  return r;
+})(),
+          (async () => {
+  const r = await getDocs(collection(db, 'users', userId, 'completions'));
+  if (DEBUG_AUTH) console.log(`[${new Date().toISOString()}] FIRESTORE: Completions loaded (${r.docs.length})`);
+  return r;
+})()
         ]);
 
         state.missions = missionsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -316,7 +404,7 @@ const App = (() => {
         // Attach realtime listeners
         setupRealtimeListeners(userId);
         
-        appState = 'READY';
+        setAppState('READY');
         
         // Finalize UI
         hideLoadingScreen();
@@ -343,7 +431,7 @@ const App = (() => {
     // Listen for Profile changes
     unsubscribeList.push(
       onSnapshot(doc(db, 'users', userId), docSnap => {
-        if (docSnap.exists() && appState === 'READY') {
+        if (docSnap.exists() && getAppState() === 'READY') {
           state.profile = docSnap.data();
           renderCurrentScreen();
         }
@@ -352,7 +440,7 @@ const App = (() => {
 
     unsubscribeList.push(
       onSnapshot(collection(db, 'users', userId, 'missions'), snapshot => {
-        if (appState !== 'READY') return;
+        if (getAppState() !== 'READY') return;
         state.missions = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         renderCurrentScreen();
       })
@@ -360,7 +448,7 @@ const App = (() => {
 
     unsubscribeList.push(
       onSnapshot(collection(db, 'users', userId, 'attributes'), snapshot => {
-        if (appState !== 'READY') return;
+        if (getAppState() !== 'READY') return;
         state.attributes = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         renderCurrentScreen();
       })
@@ -368,7 +456,7 @@ const App = (() => {
 
     unsubscribeList.push(
       onSnapshot(collection(db, 'users', userId, 'actions'), snapshot => {
-        if (appState !== 'READY') return;
+        if (getAppState() !== 'READY') return;
         state.actions = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         renderCurrentScreen();
       })
@@ -376,7 +464,7 @@ const App = (() => {
 
     unsubscribeList.push(
       onSnapshot(collection(db, 'users', userId, 'completions'), snapshot => {
-        if (appState !== 'READY') return;
+        if (getAppState() !== 'READY') return;
         state.completions = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         rebuildStatsFromCompletions();
         renderCurrentScreen();
@@ -385,6 +473,8 @@ const App = (() => {
   }
 
   function renderCurrentScreen() {
+    assertValidRender('dashboard');
+    if(DEBUG_AUTH) console.log(`[${new Date().toISOString()}] RENDER: Dashboard rendered`);
     if (currentTab === 'today') {
       renderTodayScreen();
     } else if (currentTab === 'missions') {
@@ -447,7 +537,7 @@ const App = (() => {
     if (!isFirebaseEnabled) return;
     
     // Clear purely in-memory state
-    appState = 'UNAUTHENTICATED';
+    setAppState('UNAUTHENTICATED');
     state.missions = [];
     state.attributes = [];
     state.actions = [];
@@ -2186,6 +2276,8 @@ const App = (() => {
   let onboardingStep = 1;
 
   function showOnboarding() {
+    assertValidRender('onboarding');
+    if(DEBUG_AUTH) console.log(`[${new Date().toISOString()}] RENDER: Onboarding rendered`);
     onboardingStep = 1;
     selectedArchetypeType = null;
     document.getElementById('onboarding-name-input').value = '';
@@ -2288,7 +2380,7 @@ const App = (() => {
     document.getElementById('onboarding-overlay').classList.remove('show');
     
     // Transition state from NEW_USER to READY
-    appState = 'READY';
+    setAppState('READY');
     
     if (isFirebaseEnabled && auth.currentUser) {
       setupRealtimeListeners(auth.currentUser.uid);
@@ -2722,7 +2814,7 @@ const App = (() => {
     loadAll(); // Only loads currentTab and UI prefs
     
     // Set initial loading state
-    appState = 'AUTH_LOADING';
+    setAppState('AUTH_LOADING');
     const loadingScreen = document.getElementById('app-loading-screen');
     if (loadingScreen) loadingScreen.classList.remove('hidden');
 
