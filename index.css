@@ -169,18 +169,22 @@ ul, ol {
   left: 0;
   right: 0;
   bottom: 0;
-  display: none;
+  display: flex;
   flex-direction: column;
   opacity: 0;
+  visibility: hidden;
   transform: translateY(8px);
-  transition: opacity var(--duration-normal) var(--ease-out),
-              transform var(--duration-normal) var(--ease-out);
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              visibility 0.25s;
+  pointer-events: none;
 }
 
 .screen.active {
-  display: flex;
   opacity: 1;
+  visibility: visible;
   transform: translateY(0);
+  pointer-events: auto;
 }
 
 .screen-scroll {
@@ -562,7 +566,7 @@ ul, ol {
   width: 0%;
   background: var(--gradient-xp);
   border-radius: var(--radius-full);
-  transition: width 0.8s var(--ease-out);
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
 }
 
@@ -971,7 +975,7 @@ ul, ol {
   height: 100%;
   background: var(--mission-color, var(--accent-blue));
   border-radius: var(--radius-full);
-  transition: width 0.6s var(--ease-out);
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   min-width: 0;
 }
 
@@ -1049,7 +1053,7 @@ ul, ol {
   height: 100%;
   background: var(--gradient-primary);
   border-radius: var(--radius-full);
-  transition: width 0.6s var(--ease-out);
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .mission-detail-content {
@@ -1268,7 +1272,7 @@ ul, ol {
 .completion-bar-fill {
   height: 100%;
   border-radius: var(--radius-full);
-  transition: width 0.8s var(--ease-out);
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   min-width: 0;
 }
 
@@ -1368,7 +1372,7 @@ ul, ol {
   height: 100%;
   background: var(--gradient-primary);
   border-radius: var(--radius-full);
-  transition: width 0.6s var(--ease-out);
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .progress-mission-stats {
@@ -1716,14 +1720,19 @@ ul, ol {
   inset: 0;
   background: rgba(0, 0, 0, 0);
   z-index: 2000;
-  display: none;
+  display: flex;
   align-items: flex-end;
   justify-content: center;
-  transition: background var(--duration-normal) var(--ease-out);
+  visibility: hidden;
+  opacity: 0;
+  transition: background 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              visibility 0.3s;
 }
 
 .modal-overlay.show {
-  display: flex;
+  visibility: visible;
+  opacity: 1;
   background: rgba(0, 0, 0, 0.6);
 }
 
@@ -1735,8 +1744,9 @@ ul, ol {
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   padding: var(--spacing-lg);
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   transform: translateY(100%);
-  transition: transform var(--duration-slow) var(--ease-out);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
 }
 
@@ -2234,15 +2244,19 @@ textarea.form-input {
   inset: 0;
   background: rgba(0, 0, 0, 0.85);
   z-index: 5000;
-  display: none;
+  display: flex;
   align-items: center;
   justify-content: center;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.35s ease, visibility 0.35s;
 }
 
 .level-up-overlay.show {
-  display: flex;
+  opacity: 1;
+  visibility: visible;
 }
 
 .level-up-content {
@@ -2344,14 +2358,20 @@ textarea.form-input {
   left: 0;
   right: 0;
   z-index: 4000;
-  display: none;
+  display: flex;
   justify-content: center;
   padding: var(--spacing-lg);
   padding-top: calc(var(--spacing-lg) + env(safe-area-inset-top, 0px));
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-20px);
+  transition: opacity 0.3s ease, visibility 0.3s, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .achievement-overlay.show {
-  display: flex;
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
 }
 
 .achievement-popup {
@@ -2444,10 +2464,11 @@ textarea.form-input {
 .mission-progress-bar-large-fill,
 .progress-mission-fill {
   animation: barFillIn 0.8s var(--ease-out);
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Shimmer effect for stat values on update */
-@keyframes shimmer {
+@keyframes shimmerOpacity {
   0% { opacity: 1; }
   50% { opacity: 0.6; }
   100% { opacity: 1; }
@@ -2787,16 +2808,31 @@ button:focus-visible,
   height: 100vh;
   background: radial-gradient(circle at center, #12121e 0%, #06060a 100%);
   z-index: 2000;
-  display: none;
+  display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity var(--duration-normal) var(--ease-out);
+  visibility: hidden;
+  transition: opacity 0.35s ease, visibility 0.35s;
 }
 
 .onboarding-overlay.show {
-  display: flex;
   opacity: 1;
+  visibility: visible;
+}
+
+.onboarding-step {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.onboarding-step.step-entering {
+  opacity: 0;
+  transform: translateX(30px);
+}
+
+.onboarding-step.step-exiting {
+  opacity: 0;
+  transform: translateX(-30px);
 }
 
 .onboarding-content {
@@ -2909,17 +2945,18 @@ button:focus-visible,
   height: 100vh;
   background: rgba(6, 6, 10, 0.96);
   z-index: 2500;
-  display: none;
+  display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity var(--duration-normal) var(--ease-out);
+  visibility: hidden;
+  transition: opacity 0.35s ease, visibility 0.35s;
   backdrop-filter: blur(12px);
 }
 
 .daily-victory-overlay.show {
-  display: flex;
   opacity: 1;
+  visibility: visible;
 }
 
 .victory-content {
@@ -3078,7 +3115,7 @@ button:focus-visible,
   height: 100%;
   width: 0%;
   border-radius: var(--radius-full);
-  transition: width 0.6s var(--ease-out);
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .stat-progress-item .stat-value {
@@ -3736,4 +3773,39 @@ button:focus-visible,
 .cloud-email {
   font-size: 0.7rem;
   color: var(--text-muted);
+}
+
+/* ----------------------------------------------------------------
+   33. SKELETON & UX
+   ---------------------------------------------------------------- */
+
+/* Skeleton Loading */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-card) 25%, rgba(255,255,255,0.05) 50%, var(--bg-card) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-md);
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Undo Toast */
+.toast .undo-btn {
+  background: none;
+  border: none;
+  color: var(--accent-blue);
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  margin-left: 12px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+}
+
+.toast .undo-btn:active {
+  background: rgba(79, 140, 255, 0.15);
 }

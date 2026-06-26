@@ -90,6 +90,9 @@ const App = (() => {
   let refreshTimeout = null;
   let currentUserIdForMigration = null;
   let isImportModalOpen = false;
+  let authResolved = false;
+  let undoTimeout = null;
+  let lastUndoCompletion = null;
 
   // ---------------------------------------------------------------------------
   // UUID Helper
@@ -247,30 +250,44 @@ const App = (() => {
       const hasLocalData = localStorage.getItem(STORAGE_KEYS.profile) && 
                            JSON.parse(localStorage.getItem(STORAGE_KEYS.profile)).charName;
       
-      if (hasLocalData) {
-        try {
-          const userDocRef = doc(db, 'users', userId);
-          const docSnap = await getDoc(userDocRef);
-          const hasCloudData = docSnap.exists() && docSnap.data().charName;
-          
-          if (hasCloudData) {
+      // Check cloud data first
+      let cloudHasCharName = false;
+      try {
+        const userDocRef = doc(db, 'users', userId);
+        const docSnap = await getDoc(userDocRef);
+        cloudHasCharName = docSnap.exists() && docSnap.data().charName;
+        
+        if (hasLocalData) {
+          if (cloudHasCharName) {
             console.log("Sync choice: Auto-Merge Both");
             await migrateLocalStorageToFirestore(userId, true);
           } else {
             console.log("Sync choice: Auto-Import Local");
             await migrateLocalStorageToFirestore(userId, false);
           }
-        } catch (e) {
-          console.error("Error during automatic sync/migration:", e);
         }
+      } catch (e) {
+        console.error("Error during automatic sync/migration:", e);
       }
       
       setupSync(userId);
       syncActive = true;
+      authResolved = true;
+
+      // If onboarding is showing but cloud has data, dismiss it
+      if (cloudHasCharName || hasLocalData) {
+        const onboardingOverlay = document.getElementById('onboarding-overlay');
+        if (onboardingOverlay && onboardingOverlay.classList.contains('show')) {
+          onboardingOverlay.classList.remove('show');
+          showToast(`Welcome back, ${state.profile.charName || 'Warrior'}! Data synced ✅`, 'success');
+        }
+        renderTodayScreen();
+      }
     } else {
       console.log("User logged out");
       currentUserIdForMigration = null;
       isImportModalOpen = false;
+      authResolved = true;
       if (syncActive) {
         unsubscribeList.forEach(unsub => unsub());
         unsubscribeList = [];
@@ -430,6 +447,15 @@ const App = (() => {
       rebuildStatsFromCompletions();
       recalculateStreak();
       renderCurrentScreen();
+      // If auth resolved and cloud data arrived, dismiss onboarding if it's showing
+      if (state.profile.charName) {
+        const onboardingOverlay = document.getElementById('onboarding-overlay');
+        if (onboardingOverlay && onboardingOverlay.classList.contains('show')) {
+          onboardingOverlay.classList.remove('show');
+          showToast(`Welcome back, ${state.profile.charName}! Data synced ✅`, 'success');
+          renderTodayScreen();
+        }
+      }
     }, 50);
   }
 
@@ -455,10 +481,22 @@ const App = (() => {
       return;
     }
     
+    // Show loading state on sign-in button
+    const signInBtn = document.querySelector('.google-signin-btn, [onclick*="signInWithGoogle"]');
+    const originalBtnText = signInBtn ? signInBtn.innerHTML : '';
+    if (signInBtn) {
+      signInBtn.innerHTML = '<span class="app-loading-spinner" style="width:20px;height:20px;display:inline-block;border:2px solid rgba(255,255,255,0.2);border-top-color:#fff;border-radius:50%;animation:loadingSpin 0.8s linear infinite;"></span> Signing in...';
+      signInBtn.disabled = true;
+    }
+    
     // Check if mobile or standalone/Android wrapper
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
       || localStorage.getItem('isAndroidApp') === 'true'
       || window.matchMedia('(display-mode: standalone)').matches;
+
+    const restoreBtn = () => {
+      if (signInBtn) { signInBtn.innerHTML = originalBtnText; signInBtn.disabled = false; }
+    };
 
     if (isMobile) {
       console.log("Initiating Google Sign-In with redirect...");
@@ -466,14 +504,16 @@ const App = (() => {
         .catch(e => {
           console.error("Sign-in with redirect failed:", e);
           showToast("Sign-in failed: " + e.message, "error");
+          restoreBtn();
         });
     } else {
       console.log("Initiating Google Sign-In with popup...");
       signInWithPopup(auth, googleProvider)
-        .then(() => showToast("Logged in with Google!", "success"))
+        .then(() => { showToast("Logged in with Google!", "success"); restoreBtn(); })
         .catch(e => {
           console.error("Sign-in with popup failed:", e);
           showToast("Sign-in failed: " + e.message, "error");
+          restoreBtn();
         });
     }
   }
@@ -1032,17 +1072,35 @@ const App = (() => {
   // ---------------------------------------------------------------------------
   // Toast
   // ---------------------------------------------------------------------------
-  function showToast(message, type = 'default') {
+  function showToast(message, type = 'default', undoCallback = null) {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
     toast.className = `toast ${type}-toast`;
-    toast.textContent = message;
+    
+    if (undoCallback) {
+      const textSpan = document.createElement('span');
+      textSpan.textContent = message;
+      toast.appendChild(textSpan);
+      const undoBtn = document.createElement('button');
+      undoBtn.className = 'undo-btn';
+      undoBtn.textContent = 'Undo';
+      undoBtn.onclick = (e) => {
+        e.stopPropagation();
+        undoCallback();
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+      };
+      toast.appendChild(undoBtn);
+    } else {
+      toast.textContent = message;
+    }
+    
     container.appendChild(toast);
     requestAnimationFrame(() => toast.classList.add('show'));
     setTimeout(() => {
       toast.classList.remove('show');
       setTimeout(() => toast.remove(), 300);
-    }, 2500);
+    }, undoCallback ? 5000 : 2500);
   }
 
   // ---------------------------------------------------------------------------
@@ -1058,6 +1116,11 @@ const App = (() => {
   function closeModal() {
     const overlay = document.getElementById('modal-overlay');
     overlay.classList.remove('show');
+    // Content resets after transition ends
+    setTimeout(() => {
+      const content = document.getElementById('modal-content');
+      if (!overlay.classList.contains('show') && content) content.innerHTML = '';
+    }, 350);
   }
 
   function handleModalOverlayClick(event) {
@@ -1074,32 +1137,38 @@ const App = (() => {
   // Tab Switching
   // ---------------------------------------------------------------------------
   function switchTab(tabName) {
+    if (currentTab === tabName && !currentMissionId) return;
     currentTab = tabName;
 
-    // Hide all screens
+    // Remove active from all screens (CSS transition handles fade-out)
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
 
-    // Show target screen
-    if (tabName === 'missions') {
-      document.getElementById('screen-missions').classList.add('active');
-      document.getElementById('screen-mission-detail').classList.remove('active');
-      currentMissionId = null;
-      renderMissionsScreen();
-    } else if (tabName === 'today') {
-      document.getElementById('screen-today').classList.add('active');
-      renderTodayScreen();
-    } else if (tabName === 'progress') {
-      document.getElementById('screen-progress').classList.add('active');
-      renderProgressScreen();
-    } else if (tabName === 'profile') {
-      document.getElementById('screen-profile').classList.add('active');
-      renderProfileScreen();
-    }
+    // Show target screen after a micro-delay for crossfade
+    requestAnimationFrame(() => {
+      if (tabName === 'missions') {
+        document.getElementById('screen-missions').classList.add('active');
+        document.getElementById('screen-mission-detail').classList.remove('active');
+        currentMissionId = null;
+        renderMissionsScreen();
+      } else if (tabName === 'today') {
+        document.getElementById('screen-today').classList.add('active');
+        renderTodayScreen();
+      } else if (tabName === 'progress') {
+        document.getElementById('screen-progress').classList.add('active');
+        renderProgressScreen();
+      } else if (tabName === 'profile') {
+        document.getElementById('screen-profile').classList.add('active');
+        renderProfileScreen();
+      }
+    });
 
     // Update nav
     document.querySelectorAll('.nav-item').forEach(item => {
       item.classList.toggle('active', item.dataset.screen === tabName);
     });
+
+    // Haptic feedback
+    try { navigator.vibrate && navigator.vibrate(10); } catch(e) {}
   }
 
   // ---------------------------------------------------------------------------
@@ -2076,6 +2145,9 @@ const App = (() => {
 
     const actionEl = document.querySelector(`.action-item[data-action-id="${actionId}"]`);
 
+    // Haptic feedback
+    try { navigator.vibrate && navigator.vibrate(15); } catch(e) {}
+
     if (existing) {
       // Uncomplete — remove completion
       dbDeleteCompletion(existing.id, actionId);
@@ -2122,12 +2194,28 @@ const App = (() => {
       const levelAfter = getLevelFromXp(state.profile.totalXp);
       if (levelAfter > levelBefore) {
         showLevelUp(levelAfter);
+        // Haptic for level up
+        try { navigator.vibrate && navigator.vibrate([50, 30, 50]); } catch(e) {}
       }
 
       // Achievement check
       checkAchievements();
 
       renderTodayScreen();
+
+      // Undo toast
+      showToast(`+${xpEarned} XP — ${action.name}`, 'xp', () => {
+        // Undo: remove the completion
+        dbDeleteCompletion(comp.id, actionId);
+        if (isFirebaseEnabled && auth.currentUser) {
+          state.completions = state.completions.filter(c => c.id !== comp.id);
+        }
+        rebuildStatsFromCompletions();
+        recalculateStreak();
+        saveProfile(state.profile);
+        renderTodayScreen();
+        showToast('Action undone', 'default');
+      });
 
       // Check daily victory
       checkDailyVictory();
@@ -2143,7 +2231,8 @@ const App = (() => {
   }
 
   function dismissLevelUp() {
-    document.getElementById('level-up-overlay').classList.remove('show');
+    const overlay = document.getElementById('level-up-overlay');
+    overlay.classList.remove('show');
   }
 
   // ---------------------------------------------------------------------------
@@ -2173,8 +2262,21 @@ const App = (() => {
     }
     
     onboardingStep = 2;
-    document.getElementById('onboarding-step-1').style.display = 'none';
-    document.getElementById('onboarding-step-2').style.display = 'block';
+    const step1 = document.getElementById('onboarding-step-1');
+    const step2 = document.getElementById('onboarding-step-2');
+    // Animate step transition
+    step1.classList.add('step-exiting');
+    setTimeout(() => {
+      step1.style.display = 'none';
+      step1.classList.remove('step-exiting');
+      step2.style.display = 'block';
+      step2.classList.add('step-entering');
+      requestAnimationFrame(() => {
+        step2.classList.remove('step-entering');
+      });
+    }, 250);
+    // Haptic
+    try { navigator.vibrate && navigator.vibrate(10); } catch(e) {}
   }
 
   function selectArchetype(type) {
@@ -2222,10 +2324,20 @@ const App = (() => {
       saveAll();
     }
     
-    // Step 3: Welcome
-    document.getElementById('onboarding-step-2').style.display = 'none';
-    document.getElementById('onboarding-welcome-title').textContent = `Welcome, ${name}.`;
-    document.getElementById('onboarding-step-3').style.display = 'block';
+    // Step 3: Welcome — animated transition
+    const step2 = document.getElementById('onboarding-step-2');
+    const step3 = document.getElementById('onboarding-step-3');
+    step2.classList.add('step-exiting');
+    setTimeout(() => {
+      step2.style.display = 'none';
+      step2.classList.remove('step-exiting');
+      document.getElementById('onboarding-welcome-title').textContent = `Welcome, ${name}.`;
+      step3.style.display = 'block';
+      step3.classList.add('step-entering');
+      requestAnimationFrame(() => step3.classList.remove('step-entering'));
+    }, 250);
+    // Haptic
+    try { navigator.vibrate && navigator.vibrate([30, 20, 30]); } catch(e) {}
   }
 
   function dismissOnboarding() {
@@ -2473,7 +2585,8 @@ const App = (() => {
   }
 
   function dismissDailyVictory() {
-    document.getElementById('daily-victory-overlay').classList.remove('show');
+    const overlay = document.getElementById('daily-victory-overlay');
+    overlay.classList.remove('show');
   }
 
   // ---------------------------------------------------------------------------
@@ -2651,7 +2764,37 @@ const App = (() => {
     updateConnectivityStatus();
 
     if (!state.profile.charName) {
-      showOnboarding();
+      // If Firebase is enabled, wait briefly for auth to resolve before showing onboarding
+      // This prevents showing onboarding to returning users whose cloud data hasn't loaded yet
+      if (isFirebaseEnabled && auth) {
+        // Show loading state while we wait for auth
+        const loadingScreen = document.getElementById('app-loading-screen');
+        if (loadingScreen) loadingScreen.classList.remove('hidden');
+        
+        const authTimeout = setTimeout(() => {
+          if (!authResolved && !state.profile.charName) {
+            // Auth didn't resolve in time, show onboarding
+            showOnboarding();
+            if (loadingScreen) { loadingScreen.classList.add('hidden'); setTimeout(() => loadingScreen.remove(), 500); }
+          }
+        }, 3000);
+        
+        // Check periodically if auth resolved
+        const checkInterval = setInterval(() => {
+          if (authResolved || state.profile.charName) {
+            clearTimeout(authTimeout);
+            clearInterval(checkInterval);
+            if (loadingScreen) { loadingScreen.classList.add('hidden'); setTimeout(() => loadingScreen.remove(), 500); }
+            if (!state.profile.charName) {
+              showOnboarding();
+            } else {
+              renderTodayScreen();
+            }
+          }
+        }, 100);
+      } else {
+        showOnboarding();
+      }
     } else {
       renderTodayScreen();
     }
