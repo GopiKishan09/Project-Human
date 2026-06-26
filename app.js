@@ -27,11 +27,8 @@ const App = (() => {
   // Constants
   // ---------------------------------------------------------------------------
   const STORAGE_KEYS = {
-    missions: 'ph_missions',
-    attributes: 'ph_attributes',
-    actions: 'ph_actions',
-    completions: 'ph_completions',
-    profile: 'ph_profile'
+    theme: 'ph_theme',
+    currentTab: 'ph_current_tab'
   };
 
   const XP_MAP = { easy: 10, medium: 25, hard: 50, legendary: 100 };
@@ -90,6 +87,7 @@ const App = (() => {
   let refreshTimeout = null;
   let currentUserIdForMigration = null;
   let isImportModalOpen = false;
+  let appState = 'BOOT';
   let authResolved = false;
   let undoTimeout = null;
   let lastUndoCompletion = null;
@@ -153,11 +151,8 @@ const App = (() => {
   // Storage
   // ---------------------------------------------------------------------------
   function saveAll() {
-    localStorage.setItem(STORAGE_KEYS.missions, JSON.stringify(state.missions));
-    localStorage.setItem(STORAGE_KEYS.attributes, JSON.stringify(state.attributes));
-    localStorage.setItem(STORAGE_KEYS.actions, JSON.stringify(state.actions));
-    localStorage.setItem(STORAGE_KEYS.completions, JSON.stringify(state.completions));
-    localStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(state.profile));
+    // Only save UI preferences to local storage
+    localStorage.setItem(STORAGE_KEYS.currentTab, currentTab);
   }
 
   function rebuildStatsFromCompletions() {
@@ -185,35 +180,30 @@ const App = (() => {
 
   function loadAll() {
     try {
-      state.missions = JSON.parse(localStorage.getItem(STORAGE_KEYS.missions)) || [];
-      state.attributes = JSON.parse(localStorage.getItem(STORAGE_KEYS.attributes)) || [];
-      state.actions = JSON.parse(localStorage.getItem(STORAGE_KEYS.actions)) || [];
-      state.completions = JSON.parse(localStorage.getItem(STORAGE_KEYS.completions)) || [];
+      const savedTab = localStorage.getItem(STORAGE_KEYS.currentTab);
+      if (savedTab && ['today', 'missions', 'progress', 'profile'].includes(savedTab)) {
+        currentTab = savedTab;
+      }
       
-      const loadedProfile = JSON.parse(localStorage.getItem(STORAGE_KEYS.profile)) || {};
+      // Initialize in-memory state as purely empty
+      state.missions = [];
+      state.attributes = [];
+      state.actions = [];
+      state.completions = [];
       state.profile = {
-        charName: loadedProfile.charName || '',
-        archetype: loadedProfile.archetype || '',
-        totalXp: loadedProfile.totalXp || 0,
-        currentStreak: loadedProfile.currentStreak || 0,
-        longestStreak: loadedProfile.longestStreak || 0,
-        lastActiveDate: loadedProfile.lastActiveDate || '',
-        lastVictoryDate: loadedProfile.lastVictoryDate || '',
-        lastVictoryTier: loadedProfile.lastVictoryTier || 0,
-        achievements: loadedProfile.achievements || [],
-        stats: loadedProfile.stats || { strength: 0, intelligence: 0, wealth: 0, discipline: 0, social: 0 }
+        charName: '',
+        archetype: '',
+        totalXp: 0,
+        currentStreak: 0,
+        longestStreak: 0,
+        lastActiveDate: '',
+        lastVictoryDate: '',
+        lastVictoryTier: 0,
+        achievements: [],
+        stats: { strength: 0, intelligence: 0, wealth: 0, discipline: 0, social: 0 }
       };
-
-      // Backward compatibility: make sure actions have stats array
-      state.actions.forEach(action => {
-        if (!action.stats) {
-          action.stats = ['discipline']; // default stat
-        }
-      });
-
-      rebuildStatsFromCompletions();
     } catch (e) {
-      console.error('Failed to load data:', e);
+      console.error('Failed to load UI preferences:', e);
     }
   }
 
@@ -241,246 +231,157 @@ const App = (() => {
     }
   }
 
+  
   async function handleAuthStateChange(user) {
     if (user) {
       const userId = user.uid;
       console.log("User logged in:", userId);
       currentUserIdForMigration = userId;
       
-      // Immediately hide auth-overlay and show loading screen while fetching data
       const authOverlay = document.getElementById('auth-overlay');
       if (authOverlay && authOverlay.classList.contains('show')) {
         authOverlay.classList.remove('show');
-        showLoadingScreen();
       }
 
-      setupSync(userId);
-      syncActive = true;
-      authResolved = true;
-
-      // FAST PATH: If local data exists, show dashboard immediately!
-      // Firebase will sync changes in the background.
-      if (state.profile && state.profile.charName) {
-        hideLoadingScreen();
-        triggerUIRefresh();
-      } else {
-        // Fallback safety timeout: don't hang on loading screen forever
-        setTimeout(() => {
-          const ls = document.getElementById('app-loading-screen');
-          if (ls && !ls.classList.contains('hidden')) {
-            hideLoadingScreen();
-            if (state.profile && state.profile.charName) {
-              triggerUIRefresh();
-            } else {
-              const authOverlay = document.getElementById('auth-overlay');
-              if (authOverlay) authOverlay.classList.add('show');
-              showToast("Network is slow. Try again.", "warning");
-            }
-          }
-        }, 8000);
-      }
+      appState = 'PROFILE_LOADING';
+      await bootstrapUser(userId);
     } else {
       console.log("User logged out");
       currentUserIdForMigration = null;
       isImportModalOpen = false;
-      authResolved = true;
+      
+      appState = 'UNAUTHENTICATED';
+      
+      // Clear in-memory state completely
+      state.missions = [];
+      state.attributes = [];
+      state.actions = [];
+      state.completions = [];
+      state.profile = {
+        charName: '', archetype: '', totalXp: 0, currentStreak: 0, longestStreak: 0,
+        lastActiveDate: '', lastVictoryDate: '', lastVictoryTier: 0, achievements: [],
+        stats: { strength: 0, intelligence: 0, wealth: 0, discipline: 0, social: 0 }
+      };
+
       if (syncActive) {
         unsubscribeList.forEach(unsub => unsub());
         unsubscribeList = [];
         syncActive = false;
-        loadAll();
       }
-      // Show auth screen if logged out
-      if (document.getElementById('auth-overlay')) {
-        document.getElementById('auth-overlay').classList.add('show');
-      }
+      
+      // Show auth screen, hide loading screen
+      const authOverlay = document.getElementById('auth-overlay');
+      if (authOverlay) authOverlay.classList.add('show');
       hideLoadingScreen();
     }
-    
-    triggerUIRefresh();
   }
 
-  async function migrateLocalStorageToFirestore(userId, merge = false) {
-    const userDocRef = doc(db, 'users', userId);
-    
+  async function bootstrapUser(userId) {
     try {
-      console.log(`Starting migration to Firestore (merge=${merge}) for user:`, userId);
-      loadAll();
-      
-      if (!state.profile.charName) {
-        console.log("No profile name found in localStorage. Skipping migration.");
-        return;
-      }
+      const userDocRef = doc(db, 'users', userId);
+      const docSnap = await getDoc(userDocRef);
 
-      let profileToWrite = { ...state.profile };
-
-      if (merge) {
-        const remoteDoc = await getDoc(userDocRef);
-        if (remoteDoc.exists()) {
-          const remoteData = remoteDoc.data();
-          profileToWrite = {
-            charName: remoteData.charName || state.profile.charName,
-            archetype: remoteData.archetype || state.profile.archetype,
-            totalXp: Math.max(remoteData.totalXp || 0, state.profile.totalXp || 0),
-            currentStreak: Math.max(remoteData.currentStreak || 0, state.profile.currentStreak || 0),
-            longestStreak: Math.max(remoteData.longestStreak || 0, state.profile.longestStreak || 0),
-            lastActiveDate: remoteData.lastActiveDate || state.profile.lastActiveDate,
-            lastVictoryDate: remoteData.lastVictoryDate || state.profile.lastVictoryDate,
-            lastVictoryTier: Math.max(remoteData.lastVictoryTier || 0, state.profile.lastVictoryTier || 0),
-            achievements: Array.from(new Set([
-              ...(remoteData.achievements || []),
-              ...(state.profile.achievements || [])
-            ])),
-            stats: {
-              strength: Math.max((remoteData.stats && remoteData.stats.strength) || 0, state.profile.stats.strength || 0),
-              intelligence: Math.max((remoteData.stats && remoteData.stats.intelligence) || 0, state.profile.stats.intelligence || 0),
-              wealth: Math.max((remoteData.stats && remoteData.stats.wealth) || 0, state.profile.stats.wealth || 0),
-              discipline: Math.max((remoteData.stats && remoteData.stats.discipline) || 0, state.profile.stats.discipline || 0),
-              social: Math.max((remoteData.stats && remoteData.stats.social) || 0, state.profile.stats.social || 0)
-            }
-          };
+      if (!docSnap.exists() || !docSnap.data().charName) {
+        // NEW USER
+        appState = 'NEW_USER';
+        
+        // If it doesn't exist at all, create default profile immediately
+        if (!docSnap.exists()) {
+          await setDoc(userDocRef, state.profile);
         }
+
+        hideLoadingScreen();
+        showOnboarding();
+      } else {
+        // EXISTING USER
+        state.profile = docSnap.data();
+
+        // One-time fetch of all collections before rendering
+        const [missionsSnap, attributesSnap, actionsSnap, completionsSnap] = await Promise.all([
+          getDocs(collection(db, 'users', userId, 'missions')),
+          getDocs(collection(db, 'users', userId, 'attributes')),
+          getDocs(collection(db, 'users', userId, 'actions')),
+          getDocs(collection(db, 'users', userId, 'completions'))
+        ]);
+
+        state.missions = missionsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        state.attributes = attributesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        state.actions = actionsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        state.completions = completionsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        // Data is fully loaded in memory.
+        rebuildStatsFromCompletions();
+        recalculateStreak();
+        
+        // Attach realtime listeners
+        setupRealtimeListeners(userId);
+        
+        appState = 'READY';
+        
+        // Finalize UI
+        hideLoadingScreen();
+        
+        const onboardingOverlay = document.getElementById('onboarding-overlay');
+        if (onboardingOverlay) onboardingOverlay.classList.remove('show');
+        
+        showToast(`Welcome back, ${state.profile.charName}`, 'success');
+        
+        renderCurrentScreen();
       }
-
-      if (!merge) {
-        const collections = ['missions', 'attributes', 'actions', 'completions'];
-        for (const colName of collections) {
-          const snapshot = await getDocs(collection(db, 'users', userId, colName));
-          const deleteBatch = writeBatch(db);
-          snapshot.forEach(docSnap => deleteBatch.delete(docSnap.ref));
-          await deleteBatch.commit();
-        }
-      }
-
-      const batch = writeBatch(db);
-      
-      batch.set(userDocRef, profileToWrite);
-
-      state.missions.forEach(m => {
-        batch.set(doc(db, 'users', userId, 'missions', m.id), m);
-      });
-
-      state.attributes.forEach(a => {
-        batch.set(doc(db, 'users', userId, 'attributes', a.id), a);
-      });
-
-      state.actions.forEach(act => {
-        batch.set(doc(db, 'users', userId, 'actions', act.id), act);
-      });
-
-      state.completions.forEach(c => {
-        batch.set(doc(db, 'users', userId, 'completions', c.id), c);
-      });
-
-      await batch.commit();
-      console.log("Migration write completed.");
-      showToast(merge ? "Progress merged successfully!" : "Cloud progress overwritten!", "success");
     } catch (e) {
-      console.error("Migration failed:", e);
-      showToast("Migration failed: " + e.message, "error");
+      console.error("Bootstrap failed:", e);
+      showToast("Failed to load user data. Check connection.", "error");
+      hideLoadingScreen();
     }
   }
 
-  function setupSync(userId) {
+  function setupRealtimeListeners(userId) {
     unsubscribeList.forEach(unsub => unsub());
     unsubscribeList = [];
+    syncActive = true;
 
+    // Listen for Profile changes
     unsubscribeList.push(
       onSnapshot(doc(db, 'users', userId), docSnap => {
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          state.profile = data;
-          saveAll();
-          
-          if (!data.charName) {
-            hideLoadingScreen();
-            showOnboarding();
-          } else {
-            triggerUIRefresh();
-          }
-        } else {
-          saveProfile(state.profile);
-          hideLoadingScreen();
-          showOnboarding();
+        if (docSnap.exists() && appState === 'READY') {
+          state.profile = docSnap.data();
+          renderCurrentScreen();
         }
-      }, e => {
-        console.error("Profile sync error:", e);
-        hideLoadingScreen();
-        if (state.profile && state.profile.charName) triggerUIRefresh();
-        showToast("Sync error. Please check connection.", "error");
       })
     );
 
     unsubscribeList.push(
       onSnapshot(collection(db, 'users', userId, 'missions'), snapshot => {
-        state.missions = [];
-        snapshot.forEach(docSnap => {
-          state.missions.push({ id: docSnap.id, ...docSnap.data() });
-        });
-        saveAll();
-        triggerUIRefresh();
-      }, e => console.error("Missions sync error:", e))
+        if (appState !== 'READY') return;
+        state.missions = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderCurrentScreen();
+      })
     );
 
     unsubscribeList.push(
       onSnapshot(collection(db, 'users', userId, 'attributes'), snapshot => {
-        state.attributes = [];
-        snapshot.forEach(docSnap => {
-          state.attributes.push({ id: docSnap.id, ...docSnap.data() });
-        });
-        saveAll();
-        triggerUIRefresh();
-      }, e => console.error("Attributes sync error:", e))
+        if (appState !== 'READY') return;
+        state.attributes = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderCurrentScreen();
+      })
     );
 
     unsubscribeList.push(
       onSnapshot(collection(db, 'users', userId, 'actions'), snapshot => {
-        state.actions = [];
-        snapshot.forEach(docSnap => {
-          state.actions.push({ id: docSnap.id, ...docSnap.data() });
-        });
-        saveAll();
-        triggerUIRefresh();
-      }, e => console.error("Actions sync error:", e))
+        if (appState !== 'READY') return;
+        state.actions = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderCurrentScreen();
+      })
     );
 
     unsubscribeList.push(
       onSnapshot(collection(db, 'users', userId, 'completions'), snapshot => {
-        state.completions = [];
-        snapshot.forEach(docSnap => {
-          state.completions.push({ id: docSnap.id, ...docSnap.data() });
-        });
-        saveAll();
-        triggerUIRefresh();
-      }, e => console.error("Completions sync error:", e))
+        if (appState !== 'READY') return;
+        state.completions = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        rebuildStatsFromCompletions();
+        renderCurrentScreen();
+      })
     );
-  }
-
-  function triggerUIRefresh() {
-    if (refreshTimeout) clearTimeout(refreshTimeout);
-    refreshTimeout = setTimeout(() => {
-      rebuildStatsFromCompletions();
-      recalculateStreak();
-      renderCurrentScreen();
-      // If auth resolved and cloud data arrived, dismiss overlays if showing
-      if (state.profile && state.profile.charName) {
-        hideLoadingScreen();
-        const onboardingOverlay = document.getElementById('onboarding-overlay');
-        const authOverlay = document.getElementById('auth-overlay');
-        let overlayDismissed = false;
-        if (onboardingOverlay && onboardingOverlay.classList.contains('show')) {
-          onboardingOverlay.classList.remove('show');
-          overlayDismissed = true;
-        }
-        if (authOverlay && authOverlay.classList.contains('show')) {
-          authOverlay.classList.remove('show');
-          overlayDismissed = true;
-        }
-        if (overlayDismissed) {
-          showToast(`Welcome back, ${state.profile.charName}`, 'success');
-        }
-      }
-    }, 50);
   }
 
   function renderCurrentScreen() {
@@ -544,9 +445,22 @@ const App = (() => {
 
   function signOut() {
     if (!isFirebaseEnabled) return;
+    
+    // Clear purely in-memory state
+    appState = 'UNAUTHENTICATED';
+    state.missions = [];
+    state.attributes = [];
+    state.actions = [];
+    state.completions = [];
+    state.profile = {
+      charName: '', archetype: '', totalXp: 0, currentStreak: 0, longestStreak: 0,
+      lastActiveDate: '', lastVictoryDate: '', lastVictoryTier: 0, achievements: [],
+      stats: { strength: 0, intelligence: 0, wealth: 0, discipline: 0, social: 0 }
+    };
+    
     firebaseSignOut(auth)
       .then(() => {
-        localStorage.clear();
+        // We do NOT clear localStorage here because it only contains UI preferences (theme, tab).
         window.location.reload();
       })
       .catch(e => {
@@ -2372,7 +2286,15 @@ const App = (() => {
 
   function dismissOnboarding() {
     document.getElementById('onboarding-overlay').classList.remove('show');
-    renderTodayScreen();
+    
+    // Transition state from NEW_USER to READY
+    appState = 'READY';
+    
+    if (isFirebaseEnabled && auth.currentUser) {
+      setupRealtimeListeners(auth.currentUser.uid);
+    }
+    
+    renderCurrentScreen();
     showToast('Your journey begins!', 'success');
   }
 
@@ -2797,46 +2719,19 @@ const App = (() => {
   }
 
   function init() {
-    loadAll();
-    recalculateStreak();
-    saveAll();
-    initFirebase();
+    loadAll(); // Only loads currentTab and UI prefs
     
+    // Set initial loading state
+    appState = 'AUTH_LOADING';
+    const loadingScreen = document.getElementById('app-loading-screen');
+    if (loadingScreen) loadingScreen.classList.remove('hidden');
+
     // Register online/offline event listeners
     window.addEventListener('online', updateConnectivityStatus);
     window.addEventListener('offline', updateConnectivityStatus);
     updateConnectivityStatus();
 
-    if (!state.profile.charName || !auth.currentUser) {
-      // If Firebase is enabled, wait briefly for auth to resolve before deciding flow
-      if (isFirebaseEnabled && auth) {
-        // Show loading state while we wait for auth
-        const loadingScreen = document.getElementById('app-loading-screen');
-        if (loadingScreen) loadingScreen.classList.remove('hidden');
-        
-        const authTimeout = setTimeout(() => {
-          if (!authResolved) {
-            // Auth didn't resolve in time, force show auth screen
-            hideLoadingScreen();
-            document.getElementById('auth-overlay').classList.add('show');
-          }
-        }, 4000);
-        
-        // Check periodically if auth resolved
-        const checkInterval = setInterval(() => {
-          if (authResolved) {
-            clearTimeout(authTimeout);
-            clearInterval(checkInterval);
-            // handleAuthStateChange handles the actual screen routing (Onboarding vs Dashboard vs Auth)
-          }
-        }, 100);
-      } else {
-        // Firebase disabled mode (fallback) is removed. Force sign in.
-        document.getElementById('auth-overlay').classList.add('show');
-      }
-    } else {
-      renderTodayScreen();
-    }
+    initFirebase();
 
     // Android TWA integration: deep-link parser and platform state setup
     const urlParams = new URLSearchParams(window.location.search);
