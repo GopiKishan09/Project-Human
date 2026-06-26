@@ -88,7 +88,7 @@ const App = (() => {
   let currentUserIdForMigration = null;
   let isImportModalOpen = false;
   
-  const DEBUG_AUTH = true;
+  const DEBUG_AUTH = false;
   let _internalAppState = 'BOOT';
 
   function getAppState() { return _internalAppState; }
