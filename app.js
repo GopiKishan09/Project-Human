@@ -254,34 +254,31 @@ const App = (() => {
         showLoadingScreen();
       }
 
-      // Check cloud data
-      let cloudHasCharName = false;
-      try {
-        const userDocRef = doc(db, 'users', userId);
-        const docSnap = await getDoc(userDocRef);
-        cloudHasCharName = docSnap.exists() && docSnap.data().charName;
-      } catch (e) {
-        console.error("Error during automatic sync/migration:", e);
-      }
-      
       setupSync(userId);
       syncActive = true;
-      // Dismiss auth overlay if it's showing
-      const authOverlay = document.getElementById('auth-overlay');
-      if (authOverlay && authOverlay.classList.contains('show')) {
-        authOverlay.classList.remove('show');
-      }
-
-      // Handle overlays based on cloud data presence
-      if (!cloudHasCharName) {
-        // New user with no cloud data
-        hideLoadingScreen();
-        showOnboarding();
-      } else {
-        // For existing users, just wait for triggerUIRefresh()
-        // which will hide loading screen and render dashboard
-      }
       authResolved = true;
+
+      // FAST PATH: If local data exists, show dashboard immediately!
+      // Firebase will sync changes in the background.
+      if (state.profile && state.profile.charName) {
+        hideLoadingScreen();
+        triggerUIRefresh();
+      } else {
+        // Fallback safety timeout: don't hang on loading screen forever
+        setTimeout(() => {
+          const ls = document.getElementById('app-loading-screen');
+          if (ls && !ls.classList.contains('hidden')) {
+            hideLoadingScreen();
+            if (state.profile && state.profile.charName) {
+              triggerUIRefresh();
+            } else {
+              const authOverlay = document.getElementById('auth-overlay');
+              if (authOverlay) authOverlay.classList.add('show');
+              showToast("Network is slow. Try again.", "warning");
+            }
+          }
+        }, 8000);
+      }
     } else {
       console.log("User logged out");
       currentUserIdForMigration = null;
@@ -391,13 +388,27 @@ const App = (() => {
     unsubscribeList.push(
       onSnapshot(doc(db, 'users', userId), docSnap => {
         if (docSnap.exists()) {
-          state.profile = docSnap.data();
+          const data = docSnap.data();
+          state.profile = data;
           saveAll();
-          triggerUIRefresh();
+          
+          if (!data.charName) {
+            hideLoadingScreen();
+            showOnboarding();
+          } else {
+            triggerUIRefresh();
+          }
         } else {
           saveProfile(state.profile);
+          hideLoadingScreen();
+          showOnboarding();
         }
-      }, e => console.error("Profile sync error:", e))
+      }, e => {
+        console.error("Profile sync error:", e);
+        hideLoadingScreen();
+        if (state.profile && state.profile.charName) triggerUIRefresh();
+        showToast("Sync error. Please check connection.", "error");
+      })
     );
 
     unsubscribeList.push(
