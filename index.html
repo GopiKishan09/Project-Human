@@ -643,16 +643,5 @@
   </div>
 
   <script type="module" src="app.js?v=1.0.2"></script>
-  <script>
-    // Hide loading screen when page is fully ready
-    window.addEventListener('load', function() {
-      setTimeout(function() {
-        var ls = document.getElementById('app-loading-screen');
-        if (ls) ls.classList.add('hidden');
-        // Remove from DOM after fade-out
-        setTimeout(function() { if (ls) ls.remove(); }, 500);
-      }, 300);
-    });
-  </script>
 </body>
 </html>
