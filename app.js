@@ -247,6 +247,13 @@ const App = (() => {
       console.log("User logged in:", userId);
       currentUserIdForMigration = userId;
       
+      // Immediately hide auth-overlay and show loading screen while fetching data
+      const authOverlay = document.getElementById('auth-overlay');
+      if (authOverlay && authOverlay.classList.contains('show')) {
+        authOverlay.classList.remove('show');
+        showLoadingScreen();
+      }
+
       // Check cloud data
       let cloudHasCharName = false;
       try {
@@ -2768,7 +2775,13 @@ const App = (() => {
     const loadingScreen = document.getElementById('app-loading-screen');
     if (loadingScreen && !loadingScreen.classList.contains('hidden')) {
       loadingScreen.classList.add('hidden');
-      setTimeout(() => { if (loadingScreen.parentNode) loadingScreen.remove(); }, 500);
+    }
+  }
+
+  function showLoadingScreen() {
+    const loadingScreen = document.getElementById('app-loading-screen');
+    if (loadingScreen && loadingScreen.classList.contains('hidden')) {
+      loadingScreen.classList.remove('hidden');
     }
   }
 
