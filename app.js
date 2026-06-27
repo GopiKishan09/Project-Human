@@ -36,6 +36,41 @@ const App = (() => {
   const ICONS = ['🏆','💪','🧠','💰','🎯','📚','💼','🏃‍♂️','🎨','🔬','📈','❤️','🌟','⚡','🚀','🎮','🛡️','⚔️','🐉','🌍'];
   const COLORS = ['#4f8cff','#a855f7','#10b981','#f59e0b','#f43f5e','#ec4899','#06b6d4','#8b5cf6','#ef4444','#14b8a6'];
 
+  
+  const emojiToLucide = {
+    '💪': 'dumbbell',
+    '🧠': 'brain',
+    '💰': 'coins',
+    '🛡️': 'shield',
+    '🌍': 'users',
+    '⚔️': 'sword',
+    '👑': 'crown',
+    '✨': 'sparkles',
+    '🏆': 'award',
+    '⚡': 'zap',
+    '🔥': 'flame',
+    '📘': 'book',
+    '🎯': 'target',
+    '🏃': 'footprints',
+    'Meditate': 'flower-2',
+    'Read': 'book-open',
+    'Workout': 'dumbbell',
+    'Code': 'terminal',
+    'Network': 'users'
+  };
+
+  function getLucide(iconStr) {
+    if (!iconStr) return 'circle';
+    return emojiToLucide[iconStr] || 'star';
+  }
+
+  function refreshIcons() {
+    if (window.lucide) {
+      setTimeout(() => window.lucide.createIcons(), 0);
+    }
+  }
+
+
   const ACHIEVEMENTS = [
     { id: 'first_action', name: 'First Step', desc: 'Complete your first action', icon: '🌱' },
     { id: 'actions_10', name: 'Getting Started', desc: 'Complete 10 actions', icon: '⚡' },
@@ -306,12 +341,42 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
 
       setAppState('AUTHENTICATED');
       setAppState('PROFILE_LOADING');
-      await bootstrapUser(userId);
-    } else {
-      console.log("User logged out");
-      currentUserIdForMigration = null;
-      isImportModalOpen = false;
       
+      const userDocRef = doc(db, 'users', userId);
+      let docSnap;
+      try {
+        docSnap = await (async () => { 
+  if (DEBUG_AUTH) console.log(`[${new Date().toISOString()}] FIRESTORE: Profile read started`); 
+  const res = await getDoc(userDocRef); 
+  if (DEBUG_AUTH) console.log(`[${new Date().toISOString()}] FIRESTORE: Profile exists = ${res.exists()}`); 
+  return res; 
+})();
+      } catch (e) {
+        console.error("Error reading profile:", e);
+        showToast("Error checking profile.", "error");
+        setAppState('UNAUTHENTICATED');
+        if (authOverlay) authOverlay.classList.add('show');
+        return;
+      }
+      
+      bootstrapUser(docSnap, user);
+    } else {
+      console.log("User is null. Awaiting redirect resolution if pending...");
+      try {
+        await getRedirectResult(auth);
+      } catch (e) {
+        console.warn("Redirect check error (ignoring for state transition):", e);
+      }
+      
+      if (auth.currentUser) {
+         console.log("Redirect resolved a user in the background. Aborting UNAUTHENTICATED transition.");
+         return;
+      }
+
+      console.log("User logged out definitively");
+      const authOverlay = document.getElementById('auth-overlay');
+      if (authOverlay) authOverlay.classList.add('show');
+
       setAppState('UNAUTHENTICATED');
       
       // Clear in-memory state completely
@@ -488,6 +553,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     } else if (currentTab === 'profile') {
       renderProfileScreen();
     }
+    refreshIcons();
   }
 
   function signInWithGoogle(event) {
@@ -500,7 +566,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     const signInBtn = (event && event.currentTarget) ? event.currentTarget : document.querySelector('.auth-btn-google');
     const originalBtnText = signInBtn ? signInBtn.innerHTML : '';
     if (signInBtn) {
-      signInBtn.innerHTML = '<span class="app-loading-spinner" style="width:20px;height:20px;display:inline-block;border:2px solid rgba(255,255,255,0.2);border-top-color:#fff;border-radius:50%;animation:loadingSpin 0.8s linear infinite;"></span> Signing in...';
+      signInBtn.innerHTML = '<span class="app-loading-spinner" style="width:20px;height:20px;display:inline-block;border:2px solid rgba(255,255,255,0.2);border-top-color:#fff;border-radius:50%;animation:loadingSpin 0.8s linear infinite; margin-right:8px; vertical-align:middle;"></span> Please wait...';
       signInBtn.disabled = true;
     }
     
@@ -1067,7 +1133,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
 
   function showAchievementPopup(ach) {
     const overlay = document.getElementById('achievement-overlay');
-    document.getElementById('achievement-popup-icon').textContent = ach.icon;
+    document.getElementById('achievement-popup-icon').innerHTML = `<i data-lucide="${getLucide(ach.icon)}"></i>`;
     document.getElementById('achievement-popup-name').textContent = ach.name;
     document.getElementById('achievement-popup-desc').textContent = ach.desc;
     overlay.classList.add('show');
@@ -1304,7 +1370,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
 
       html += `<div class="mission-group" data-mission-id="${missionId}">
         <div class="mission-group-header">
-          <span class="mission-icon">${mission.icon}</span>
+          <span class="mission-icon"><i data-lucide="${getLucide(mission.icon)}"></i></span>
           <span class="mission-name">${escapeHtml(mission.name)}</span>
           <span class="mission-count">${completed}/${mActions.length}</span>
         </div>
@@ -1365,7 +1431,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
 
       html += `<div class="mission-card" style="--mission-color: ${mission.color}" onclick="App.showMissionDetail('${mission.id}')">
         <div class="mission-card-header">
-          <span class="mission-card-icon">${mission.icon}</span>
+          <span class="mission-card-icon"><i data-lucide="${getLucide(mission.icon)}"></i></span>
           <div class="mission-card-info">
             <h3 class="mission-card-name">${escapeHtml(mission.name)}</h3>
             <p class="mission-card-desc">${escapeHtml(mission.description || '')}</p>
@@ -1396,7 +1462,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     currentMissionId = missionId;
 
     // Title
-    document.getElementById('mission-detail-title').textContent = mission.icon + ' ' + mission.name;
+    document.getElementById('mission-detail-title').innerHTML = `<i data-lucide="${getLucide(mission.icon)}" style="margin-right:8px;"></i> ${mission.name}`;
 
     // Progress
     const mActions = state.actions.filter(a => a.missionId === missionId);
@@ -1610,7 +1676,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
 
       html += `<div class="progress-mission-card" style="--mission-color: ${mission.color}">
         <div class="progress-mission-header">
-          <span>${mission.icon}</span>
+          <span><i data-lucide="${getLucide(mission.icon)}"></i></span>
           <span>${escapeHtml(mission.name)}</span>
           <span>${progress}%</span>
         </div>
@@ -1669,7 +1735,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     ACHIEVEMENTS.forEach(ach => {
       const unlocked = state.profile.achievements.includes(ach.id);
       html += `<div class="achievement-badge ${unlocked ? 'unlocked' : 'locked'}">
-        <span class="achievement-icon">${ach.icon}</span>
+        <span class="achievement-icon"><i data-lucide="${getLucide(ach.icon)}"></i></span>
         <span class="achievement-name">${ach.name}</span>
         <span class="achievement-desc">${ach.desc}</span>
       </div>`;
@@ -2625,7 +2691,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     document.getElementById('victory-xp-earned').textContent = `+${xpGained}`;
     document.getElementById('victory-streak').textContent = state.profile.currentStreak;
     
-    document.getElementById('daily-victory-overlay').classList.add('show');
+    document.getElementById('daily-victory-overlay').classList.add('show'); refreshIcons();
   }
 
   function dismissDailyVictory() {
