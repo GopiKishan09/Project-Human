@@ -388,7 +388,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       if (authOverlay) authOverlay.classList.add('show');
 
       setAppState('UNAUTHENTICATED');
-      
+
       // Clear in-memory state completely
       state.missions = [];
       state.attributes = [];
