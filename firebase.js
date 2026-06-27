@@ -28,9 +28,17 @@ import {
 // FIREBASE CONFIGURATION
 // Paste your Firebase Config below:
 // ============================================================================
+const resolveAuthDomain = () => {
+  const hostname = window.location?.hostname || 'localhost';
+  if (!hostname || hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]') {
+    return 'localhost';
+  }
+  return hostname;
+};
+
 const firebaseConfig = {
   apiKey: "AIzaSyBh_NK7DsvbvR4xgoHaDqYUSOhk1vIndr8",
-  authDomain: "project-human-c05be.firebaseapp.com",
+  authDomain: resolveAuthDomain(),
   projectId: "project-human-c05be",
   storageBucket: "project-human-c05be.firebasestorage.app",
   messagingSenderId: "935466733995",

@@ -18,7 +18,7 @@ import {
   getDocs,
   onSnapshot,
   writeBatch
-} from './firebase.js?v=1.0.3';
+} from './firebase.js?v=1.0.4';
 
 const App = (() => {
   'use strict';
@@ -375,9 +375,11 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       // Handle Google Sign-In redirect result when app loads
       getRedirectResult(auth)
         .then((result) => {
-          if (result && result.user) {
-            logBoot('[Redirect Sign-In Successful]', result.user.uid);
+          const resolvedUser = result?.user || auth?.currentUser;
+          if (resolvedUser) {
+            logBoot('[Redirect Sign-In Successful]', resolvedUser.uid);
             showToast("Logged in with Google!", "success");
+            return handleAuthStateChange(resolvedUser);
           }
         })
         .catch((e) => {
@@ -661,7 +663,8 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
           authInFlight = false;
           resetSignInButtonState();
           logAuthError('Sign-in with redirect failed', e);
-          showToast("Sign-in failed: " + e.message, "error");
+          const isUnauthorizedDomain = e?.code === 'auth/unauthorized-domain';
+          showToast(isUnauthorizedDomain ? 'This app domain is not authorized in Firebase Authentication. Add it in the Firebase console.' : "Sign-in failed: " + e.message, "error");
           setAppState('UNAUTHENTICATED');
           hideLoadingScreen();
           const authOverlay = document.getElementById('auth-overlay');
@@ -678,7 +681,8 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
           authInFlight = false;
           resetSignInButtonState();
           logAuthError('Sign-in with popup failed', e);
-          showToast("Sign-in failed: " + e.message, "error");
+          const isUnauthorizedDomain = e?.code === 'auth/unauthorized-domain';
+          showToast(isUnauthorizedDomain ? 'This app domain is not authorized in Firebase Authentication. Add it in the Firebase console.' : "Sign-in failed: " + e.message, "error");
           setAppState('UNAUTHENTICATED');
           hideLoadingScreen();
           const authOverlay = document.getElementById('auth-overlay');
