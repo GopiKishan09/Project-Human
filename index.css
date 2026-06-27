@@ -185,10 +185,16 @@ ul, ol {
 .screen {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  padding-bottom: calc(100px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px);
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              visibility 0.25s;
+  pointer-events: none;
+  z-index: 10;
 }
 
 .screen.active {
@@ -2429,6 +2435,30 @@ button:focus-visible,
 /* ================================================================
    PROJECT HUMAN V2 — REFACTORED PREMIUM COMPONENTS
    ================================================================ */
+
+/* --- Base Structural Components --- */
+.card, .stat-card, .character-overview-card, .completion-target-card, .character-stats-card, .mission-card, .archetype-card, .achievement-card {
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  height: auto; 
+  min-height: 0; /* Fix collapse bug */
+  flex-shrink: 0; /* Prevent flex squish */
+}
+
+/* Premium 3D depth */
+.card::before, .mission-card::before, .character-overview-card::before, .completion-target-card::before, .character-stats-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  pointer-events: none;
+}
 
 /* --- Navigation --- */
 .bottom-nav {
