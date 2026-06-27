@@ -1342,6 +1342,31 @@ button:focus-visible,
   transform: translateY(-2px);
 }
 
+.auth-btn-google.auth-btn-loading {
+  cursor: progress;
+  opacity: 0.98;
+  box-shadow: 0 8px 24px rgba(17, 24, 39, 0.16);
+}
+
+.auth-btn-google.auth-btn-loading:disabled {
+  transform: none;
+  opacity: 0.98;
+}
+
+.auth-btn-google .auth-loading-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(17, 17, 17, 0.16);
+  border-top-color: #111111;
+  border-radius: 50%;
+  animation: loadingSpin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+.auth-btn-google .auth-loading-label {
+  color: #111111;
+}
+
 .auth-btn-google svg {
   flex-shrink: 0;
 }

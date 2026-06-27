@@ -18,7 +18,7 @@ import {
   getDocs,
   onSnapshot,
   writeBatch
-} from './firebase.js?v=1.0.2';
+} from './firebase.js?v=1.0.3';
 
 const App = (() => {
   'use strict';
@@ -122,9 +122,27 @@ const App = (() => {
   let refreshTimeout = null;
   let currentUserIdForMigration = null;
   let isImportModalOpen = false;
+  let authInFlight = false;
+  let authButtonTarget = null;
+  let authButtonOriginalHtml = '';
   
   const DEBUG_AUTH = false;
   let _internalAppState = 'BOOT';
+
+  function logBoot(message, detail) {
+    if (!DEBUG_AUTH) return;
+    const suffix = detail === undefined ? '' : ` ${detail}`;
+    console.log(`[${new Date().toISOString()}] [BOOT LOG] ${message}${suffix}`);
+  }
+
+  function logAuthError(context, error) {
+    const normalized = error || {};
+    console.error(`[${new Date().toISOString()}] [AUTH ERROR] ${context}`, {
+      code: normalized.code || 'unknown',
+      message: normalized.message || String(normalized),
+      stack: normalized.stack || null
+    });
+  }
 
   
   // --- WATCHDOG ---
@@ -149,6 +167,27 @@ const App = (() => {
   startWatchdog();
 
   function getAppState() { return _internalAppState; }
+
+  function setSignInButtonLoading(button, originalHtml) {
+    if (!button) return;
+    authButtonTarget = button;
+    authButtonOriginalHtml = originalHtml;
+    button.classList.add('auth-btn-loading');
+    button.disabled = true;
+    button.setAttribute('aria-busy', 'true');
+    button.innerHTML = '<span class="auth-loading-spinner" aria-hidden="true"></span><span class="auth-loading-label">Signing you in...</span>';
+  }
+
+  function resetSignInButtonState() {
+    if (authButtonTarget) {
+      authButtonTarget.classList.remove('auth-btn-loading');
+      authButtonTarget.disabled = false;
+      authButtonTarget.setAttribute('aria-busy', 'false');
+      authButtonTarget.innerHTML = authButtonOriginalHtml;
+    }
+    authButtonTarget = null;
+    authButtonOriginalHtml = '';
+  }
   
   function setAppState(val) {
     if (DEBUG_AUTH) {
@@ -330,32 +369,43 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   // ---------------------------------------------------------------------------
   function initFirebase() {
     if (isFirebaseEnabled && auth) {
-      console.log(`[${new Date().toISOString()}] [BOOT LOG] [Firebase Initialized]`);
+      logBoot('[Firebase Initialized]');
       onAuthStateChanged(auth, handleAuthStateChange);
       
       // Handle Google Sign-In redirect result when app loads
       getRedirectResult(auth)
         .then((result) => {
           if (result && result.user) {
-            console.log("Redirect sign-in successful:", result.user.uid);
+            logBoot('[Redirect Sign-In Successful]', result.user.uid);
             showToast("Logged in with Google!", "success");
           }
         })
         .catch((e) => {
-          console.error("Redirect sign-in failed:", e);
+          logAuthError('Redirect sign-in failed', e);
           showToast("Sign-in failed: " + e.message, "error");
         });
     } else {
-      console.warn("Firebase not enabled. Running in Local Storage Mode.");
+      logBoot('[Firebase Fallback]', 'Firebase unavailable; finalizing startup.');
+      setAppState('UNAUTHENTICATED');
+      hideLoadingScreen();
+      renderCurrentScreen();
     }
   }
 
   
   async function handleAuthStateChange(user) {
-    console.log(`[${new Date().toISOString()}] [BOOT LOG] [onAuthStateChanged Fired] User: ${user ? user.uid : 'null'}`);
+    logBoot('[onAuthStateChanged Fired]', user ? user.uid : 'null');
+
+    if (!user && authInFlight) {
+      logBoot('[Auth Pending]', 'Waiting for the real auth state before resetting the UI.');
+      return;
+    }
+
     if (user) {
+      authInFlight = false;
+      resetSignInButtonState();
       const userId = user.uid;
-      console.log("User logged in:", userId);
+      logBoot('[User Logged In]', userId);
       currentUserIdForMigration = userId;
       
       const authOverlay = document.getElementById('auth-overlay');
@@ -366,24 +416,26 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       setAppState('AUTHENTICATED');
       setAppState('PROFILE_LOADING');
       
-      console.log(`[${new Date().toISOString()}] [BOOT LOG] Calling bootstrapUser`);
+      logBoot('[Calling Bootstrap User]', userId);
       bootstrapUser(userId);
     } else {
-      console.log("User is null. Awaiting redirect resolution if pending...");
+      logBoot('[No User]', 'Awaiting redirect resolution if pending...');
       try {
-        console.log(`[${new Date().toISOString()}] [BOOT LOG] [getRedirectResult Started]`);
+        logBoot('[getRedirectResult Started]');
         await getRedirectResult(auth);
-        console.log(`[${new Date().toISOString()}] [BOOT LOG] [getRedirectResult Finished]`);
+        logBoot('[getRedirectResult Finished]');
       } catch (e) {
-        console.warn("Redirect check error (ignoring for state transition):", e);
+        logAuthError('Redirect check error', e);
       }
       
       if (auth.currentUser) {
-         console.log("Redirect resolved a user in the background. Aborting UNAUTHENTICATED transition.");
+         logBoot('[Redirect Resolved User]', 'Aborting unauthenticated transition.');
          return;
       }
 
-      console.log("User logged out definitively");
+      logBoot('[User Logged Out]', 'Definitive unauthenticated state.');
+      authInFlight = false;
+      resetSignInButtonState();
       const authOverlay = document.getElementById('auth-overlay');
       if (authOverlay) authOverlay.classList.add('show');
 
@@ -407,14 +459,14 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       }
       
       // Show auth screen, hide loading screen
-      const authOverlay = document.getElementById('auth-overlay');
       if (authOverlay) authOverlay.classList.add('show');
       hideLoadingScreen();
     }
   }
 
   async function bootstrapUser(userId) {
-    console.log(`[${new Date().toISOString()}] [BOOT LOG] [Bootstrap Started] arg userId type: ${typeof userId}`);
+    logBoot('[Bootstrap Started]', `userId type: ${typeof userId}`);
+    logBoot('[Profile Query Started]', userId);
     try {
       const userDocRef = doc(db, 'users', userId);
       const docSnap = await (async () => { 
@@ -424,7 +476,10 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   return res; 
 })()
 
-      if (!docSnap.exists() || !docSnap.data().charName) {
+      const profileExists = docSnap.exists() && !!docSnap.data()?.charName;
+      logBoot('[Profile Found]', profileExists ? 'YES' : 'NO');
+
+      if (!profileExists) {
         setAppState('PROFILE_NOT_FOUND');
         // NEW USER
         setAppState('NEW_USER');
@@ -493,9 +548,14 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
         renderCurrentScreen();
       }
     } catch (e) {
-      console.error("Bootstrap failed:", e);
+      authInFlight = false;
+      resetSignInButtonState();
+      logAuthError('Bootstrap failed', e);
       showToast("Failed to load user data. Check connection.", "error");
       hideLoadingScreen();
+      setAppState('UNAUTHENTICATED');
+      const authOverlay = document.getElementById('auth-overlay');
+      if (authOverlay) authOverlay.classList.add('show');
     }
   }
 
@@ -572,13 +632,21 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       showToast("Cloud sync is not configured.", "error");
       return;
     }
-    
-    // Show loading state on sign-in button
+
+    if (authInFlight) {
+      logBoot('[Sign-In Request Ignored]', 'A Google auth request is already in progress.');
+      return;
+    }
+
     const signInBtn = (event && event.currentTarget) ? event.currentTarget : document.querySelector('.auth-btn-google');
     const originalBtnText = signInBtn ? signInBtn.innerHTML : '';
+    authInFlight = true;
+    showLoadingScreen();
+    setAppState('AUTH_LOADING');
+    logBoot('[Sign-In Button Clicked]');
+
     if (signInBtn) {
-      signInBtn.innerHTML = '<span class="app-loading-spinner" style="width:20px;height:20px;display:inline-block;border:2px solid rgba(255,255,255,0.2);border-top-color:#fff;border-radius:50%;animation:loadingSpin 0.8s linear infinite; margin-right:8px; vertical-align:middle;"></span> Please wait...';
-      signInBtn.disabled = true;
+      setSignInButtonLoading(signInBtn, originalBtnText);
     }
     
     // Check if mobile or standalone/Android wrapper
@@ -586,26 +654,35 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       || localStorage.getItem('isAndroidApp') === 'true'
       || window.matchMedia('(display-mode: standalone)').matches;
 
-    const restoreBtn = () => {
-      if (signInBtn) { signInBtn.innerHTML = originalBtnText; signInBtn.disabled = false; }
-    };
-
     if (isMobile) {
-      console.log("Initiating Google Sign-In with redirect...");
+      logBoot('[Redirect Started]');
       signInWithRedirect(auth, googleProvider)
         .catch(e => {
-          console.error("Sign-in with redirect failed:", e);
+          authInFlight = false;
+          resetSignInButtonState();
+          logAuthError('Sign-in with redirect failed', e);
           showToast("Sign-in failed: " + e.message, "error");
-          restoreBtn();
+          setAppState('UNAUTHENTICATED');
+          hideLoadingScreen();
+          const authOverlay = document.getElementById('auth-overlay');
+          if (authOverlay) authOverlay.classList.add('show');
         });
     } else {
-      console.log("Initiating Google Sign-In with popup...");
+      logBoot('[Popup Started]');
       signInWithPopup(auth, googleProvider)
-        .then(() => { showToast("Logged in with Google", "success"); restoreBtn(); })
+        .then((result) => {
+          logBoot('[Firebase Credential Received]', result?.user?.uid || 'pending');
+          showToast("Logged in with Google", "success");
+        })
         .catch(e => {
-          console.error("Sign-in with popup failed:", e);
+          authInFlight = false;
+          resetSignInButtonState();
+          logAuthError('Sign-in with popup failed', e);
           showToast("Sign-in failed: " + e.message, "error");
-          restoreBtn();
+          setAppState('UNAUTHENTICATED');
+          hideLoadingScreen();
+          const authOverlay = document.getElementById('auth-overlay');
+          if (authOverlay) authOverlay.classList.add('show');
         });
     }
   }
