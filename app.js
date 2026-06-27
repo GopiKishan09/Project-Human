@@ -126,6 +126,28 @@ const App = (() => {
   const DEBUG_AUTH = false;
   let _internalAppState = 'BOOT';
 
+  
+  // --- WATCHDOG ---
+  let watchdogTimer = null;
+  function startWatchdog() {
+    if (watchdogTimer) clearTimeout(watchdogTimer);
+    watchdogTimer = setTimeout(() => {
+      const lsVisible = document.getElementById('app-loading-screen') && !document.getElementById('app-loading-screen').classList.contains('hidden');
+      if (lsVisible) {
+        console.error("================ WATCHDOG TRIGGERED ================");
+        console.error("App stuck in LOADING state for > 10 seconds.");
+        console.error("Current FSM State:", getAppState());
+        console.error("Firebase CurrentUser:", auth && auth.currentUser ? auth.currentUser.uid : "null");
+        console.error("Watchdog Triggered at:", new Date().toISOString());
+        console.error("====================================================");
+      }
+    }, 10000);
+  }
+  function stopWatchdog() {
+    if (watchdogTimer) clearTimeout(watchdogTimer);
+  }
+  startWatchdog();
+
   function getAppState() { return _internalAppState; }
   
   function setAppState(val) {
@@ -308,6 +330,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   // ---------------------------------------------------------------------------
   function initFirebase() {
     if (isFirebaseEnabled && auth) {
+      console.log(`[${new Date().toISOString()}] [BOOT LOG] [Firebase Initialized]`);
       onAuthStateChanged(auth, handleAuthStateChange);
       
       // Handle Google Sign-In redirect result when app loads
@@ -329,6 +352,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
 
   
   async function handleAuthStateChange(user) {
+    console.log(`[${new Date().toISOString()}] [BOOT LOG] [onAuthStateChanged Fired] User: ${user ? user.uid : 'null'}`);
     if (user) {
       const userId = user.uid;
       console.log("User logged in:", userId);
@@ -342,28 +366,14 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       setAppState('AUTHENTICATED');
       setAppState('PROFILE_LOADING');
       
-      const userDocRef = doc(db, 'users', userId);
-      let docSnap;
-      try {
-        docSnap = await (async () => { 
-  if (DEBUG_AUTH) console.log(`[${new Date().toISOString()}] FIRESTORE: Profile read started`); 
-  const res = await getDoc(userDocRef); 
-  if (DEBUG_AUTH) console.log(`[${new Date().toISOString()}] FIRESTORE: Profile exists = ${res.exists()}`); 
-  return res; 
-})();
-      } catch (e) {
-        console.error("Error reading profile:", e);
-        showToast("Error checking profile.", "error");
-        setAppState('UNAUTHENTICATED');
-        if (authOverlay) authOverlay.classList.add('show');
-        return;
-      }
-      
-      bootstrapUser(docSnap, user);
+      console.log(`[${new Date().toISOString()}] [BOOT LOG] Calling bootstrapUser`);
+      bootstrapUser(userId);
     } else {
       console.log("User is null. Awaiting redirect resolution if pending...");
       try {
+        console.log(`[${new Date().toISOString()}] [BOOT LOG] [getRedirectResult Started]`);
         await getRedirectResult(auth);
+        console.log(`[${new Date().toISOString()}] [BOOT LOG] [getRedirectResult Finished]`);
       } catch (e) {
         console.warn("Redirect check error (ignoring for state transition):", e);
       }
@@ -404,6 +414,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   }
 
   async function bootstrapUser(userId) {
+    console.log(`[${new Date().toISOString()}] [BOOT LOG] [Bootstrap Started] arg userId type: ${typeof userId}`);
     try {
       const userDocRef = doc(db, 'users', userId);
       const docSnap = await (async () => { 
@@ -2863,6 +2874,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   // Initialization & UI Utilities
   // ---------------------------------------------------------------------------
   function hideLoadingScreen() {
+    stopWatchdog();
     const loadingScreen = document.getElementById('app-loading-screen');
     if (loadingScreen && !loadingScreen.classList.contains('hidden')) {
       loadingScreen.classList.add('hidden');
@@ -2877,6 +2889,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   }
 
   function init() {
+    console.log(`[${new Date().toISOString()}] [BOOT LOG] [BOOT Started]`);
     loadAll(); // Only loads currentTab and UI prefs
     
     // Set initial loading state
