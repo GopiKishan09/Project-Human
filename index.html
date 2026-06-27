@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="index.css">
   
   <!-- Loading Screen Styles (inline for instant render) -->
@@ -67,22 +67,24 @@
     @keyframes loadingSpin {
       to { transform: rotate(360deg); }
     }
+    @keyframes loadingSkeleton { 0% { transform: translateX(-100%); } 100% { transform: translateX(400%); } }
   </style>
+  <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
 
   <!-- App Loading Screen -->
   <div id="app-loading-screen" class="app-loading-screen">
-    <div class="app-loading-icon">⚡</div>
+    <div class="app-loading-icon"><i data-lucide="zap" style="width: 48px; height: 48px;"></i></div>
     <h1 class="app-loading-title">PROJECT HUMAN</h1>
     <p class="app-loading-subtitle">Build Your Character</p>
-    <div class="app-loading-spinner"></div>
+    <div class="app-loading-bar-wrapper" style="width: 200px; height: 4px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; margin-top: 24px;"><div style="width: 30%; height: 100%; background: var(--gradient-primary); border-radius: 4px; animation: loadingSkeleton 1.5s infinite ease-in-out;"></div></div>
   </div>
 
   <!-- Auth Overlay -->
   <div id="auth-overlay" class="auth-overlay">
     <div class="auth-content">
-      <div class="auth-logo">⚡</div>
+      <div class="auth-logo"><i data-lucide="shield-check" style="width: 42px; height: 42px;"></i></div>
       <h1 class="auth-title">PROJECT <span class="highlight">HUMAN</span></h1>
       <p class="auth-subtitle">Build Your Character. Level Up Your Life.</p>
       
@@ -109,7 +111,7 @@
   <div id="level-up-overlay" class="level-up-overlay">
     <div class="level-up-content">
       <div class="level-up-glow"></div>
-      <div class="level-up-icon">⚡</div>
+      <div class="level-up-icon"><i data-lucide="chevron-up-square" style="width: 64px; height: 64px; color: #a855f7;"></i></div>
       <h2 class="level-up-title">LEVEL UP!</h2>
       <p class="level-up-level" id="level-up-level-text">Level 2</p>
       <p class="level-up-message">You're becoming stronger.</p>
@@ -120,7 +122,7 @@
   <!-- Achievement Unlocked Overlay -->
   <div id="achievement-overlay" class="achievement-overlay">
     <div class="achievement-popup">
-      <div class="achievement-popup-icon" id="achievement-popup-icon">🏆</div>
+      <div class="achievement-popup-icon" id="achievement-popup-icon"><i data-lucide="award"></i></div>
       <p class="achievement-popup-label">Achievement Unlocked</p>
       <h3 class="achievement-popup-name" id="achievement-popup-name">First Step</h3>
       <p class="achievement-popup-desc" id="achievement-popup-desc">Complete your first action</p>
@@ -146,22 +148,22 @@
         <label class="form-label">Select Your Archetype</label>
         <div class="archetype-grid">
           <div class="archetype-card" id="archetype-warrior" onclick="App.selectArchetype('warrior')">
-            <span class="archetype-icon">⚔️</span>
+            <span class="archetype-icon"><i data-lucide="sword"></i></span>
             <span class="archetype-name">Warrior</span>
             <span class="archetype-desc">Focuses on physical mastery & discipline. Strength is the path.</span>
           </div>
           <div class="archetype-card" id="archetype-scholar" onclick="App.selectArchetype('scholar')">
-            <span class="archetype-icon">🧠</span>
+            <span class="archetype-icon"><i data-lucide="brain"></i></span>
             <span class="archetype-name">Scholar</span>
             <span class="archetype-desc">Focuses on academic growth & intelligence. Knowledge is power.</span>
           </div>
           <div class="archetype-card" id="archetype-builder" onclick="App.selectArchetype('builder')">
-            <span class="archetype-icon">💰</span>
+            <span class="archetype-icon"><i data-lucide="coins"></i></span>
             <span class="archetype-name">Builder</span>
             <span class="archetype-desc">Focuses on finances & side projects. Wealth is freedom.</span>
           </div>
           <div class="archetype-card" id="archetype-leader" onclick="App.selectArchetype('leader')">
-            <span class="archetype-icon">👑</span>
+            <span class="archetype-icon"><i data-lucide="crown"></i></span>
             <span class="archetype-name">Leader</span>
             <span class="archetype-desc">Focuses on social skills & network. Connection is key.</span>
           </div>
@@ -171,7 +173,7 @@
 
       <div class="onboarding-step" id="onboarding-step-3" style="display: none;">
         <div class="onboarding-welcome">
-          <div class="welcome-icon">✨</div>
+          <div class="welcome-icon"><i data-lucide="sparkles"></i></div>
           <h3 id="onboarding-welcome-title">Welcome, Hero.</h3>
           <p class="onboarding-welcome-subtitle">Consistency beats perfection. Stay above 80%.</p>
           <button class="btn btn-primary btn-full" style="margin-top: 24px;" onclick="App.dismissOnboarding()">Enter Game</button>
@@ -184,7 +186,7 @@
   <div id="daily-victory-overlay" class="daily-victory-overlay">
     <div class="victory-content">
       <div class="victory-glow" id="victory-glow-layer"></div>
-      <div class="victory-icon" id="victory-icon-element">🏆</div>
+      <div class="victory-icon" id="victory-icon-element"><i data-lucide="trophy" style="width: 64px; height: 64px;"></i></div>
       <h2 class="victory-title" id="victory-title-element">DAILY SUCCESS!</h2>
       <p class="victory-message" id="victory-message-text">Consistency Beats Perfection</p>
       
@@ -255,7 +257,7 @@
         <div class="completion-target-card" id="completion-target-card">
           <div class="target-card-header">
             <span class="target-card-title">🎯 Completion Target</span>
-            <span class="target-card-status" id="dashboard-target-status">On Track ✅</span>
+            <span class="target-card-status" id="dashboard-target-status">On Track <i data-lucide="check-circle-2" style="width: 14px; height: 14px; margin-left: 4px;"></i></span>
           </div>
           <div class="target-card-body">
             <div class="target-card-metric">
@@ -274,27 +276,27 @@
         <div class="character-stats-card">
           <div class="stats-progress-list">
             <div class="stat-progress-item strength">
-              <span class="stat-name">💪 Strength</span>
+              <span class="stat-name"><i data-lucide="dumbbell" style="width: 14px; height: 14px; margin-right: 6px;"></i> Strength</span>
               <div class="stat-bar"><div class="stat-fill" id="stat-strength-fill" style="width: 0%"></div></div>
               <span class="stat-value" id="stat-strength-val">Lv. 1</span>
             </div>
             <div class="stat-progress-item intelligence">
-              <span class="stat-name">🧠 Intelligence</span>
+              <span class="stat-name"><i data-lucide="brain" style="width: 14px; height: 14px; margin-right: 6px;"></i> Intelligence</span>
               <div class="stat-bar"><div class="stat-fill" id="stat-intelligence-fill" style="width: 0%"></div></div>
               <span class="stat-value" id="stat-intelligence-val">Lv. 1</span>
             </div>
             <div class="stat-progress-item wealth">
-              <span class="stat-name">💰 Wealth</span>
+              <span class="stat-name"><i data-lucide="coins" style="width: 14px; height: 14px; margin-right: 6px;"></i> Wealth</span>
               <div class="stat-bar"><div class="stat-fill" id="stat-wealth-fill" style="width: 0%"></div></div>
               <span class="stat-value" id="stat-wealth-val">Lv. 1</span>
             </div>
             <div class="stat-progress-item discipline">
-              <span class="stat-name">🛡️ Discipline</span>
+              <span class="stat-name"><i data-lucide="shield" style="width: 14px; height: 14px; margin-right: 6px;"></i> Discipline</span>
               <div class="stat-bar"><div class="stat-fill" id="stat-discipline-fill" style="width: 0%"></div></div>
               <span class="stat-value" id="stat-discipline-val">Lv. 1</span>
             </div>
             <div class="stat-progress-item social">
-              <span class="stat-name">🌍 Social</span>
+              <span class="stat-name"><i data-lucide="users" style="width: 14px; height: 14px; margin-right: 6px;"></i> Social</span>
               <div class="stat-bar"><div class="stat-fill" id="stat-social-fill" style="width: 0%"></div></div>
               <span class="stat-value" id="stat-social-val">Lv. 1</span>
             </div>
@@ -308,7 +310,7 @@
         <div id="today-actions" class="today-actions"></div>
 
         <div id="today-empty" class="empty-state" style="display:none;">
-          <div class="empty-icon">🎯</div>
+          <div class="empty-icon"><i data-lucide="target" style="width:48px;height:48px;"></i></div>
           <h3 class="empty-title">No Actions Today</h3>
           <p class="empty-desc">Create missions and actions to start building your character.</p>
           <button class="btn btn-primary" onclick="App.switchTab('missions')">Create Mission</button>
@@ -330,7 +332,7 @@
         <div id="missions-list" class="missions-list"></div>
 
         <div id="missions-empty" class="empty-state" style="display:none;" onclick="App.showCreateMission()">
-          <div class="empty-icon">🚀</div>
+          <div class="empty-icon"><i data-lucide="rocket" style="width:48px;height:48px;"></i></div>
           <h3 class="empty-title">No Missions Yet</h3>
           <p class="empty-desc">Create your first mission to begin your journey.</p>
           <button class="btn btn-primary" style="margin-top: 16px;" onclick="event.stopPropagation(); App.showCreateMission();">Create First Mission</button>
@@ -338,7 +340,7 @@
       </div>
 
       <button id="fab-mission" class="fab fab-secondary" onclick="App.showCreateMission()">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <i data-lucide="plus" style="width:24px;height:24px;"></i>
       </button>
     </div>
 
