@@ -38,7 +38,7 @@ const resolveAuthDomain = () => {
 
 const firebaseConfig = {
   apiKey: "AIzaSyBh_NK7DsvbvR4xgoHaDqYUSOhk1vIndr8",
-  authDomain: resolveAuthDomain(),
+  authDomain: "project-human-c05be.firebaseapp.com",
   projectId: "project-human-c05be",
   storageBucket: "project-human-c05be.firebasestorage.app",
   messagingSenderId: "935466733995",
