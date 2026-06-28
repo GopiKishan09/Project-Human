@@ -18,7 +18,7 @@ import {
   getDocs,
   onSnapshot,
   writeBatch
-} from './firebase.js?v=1.0.4';
+} from './firebase.js?v=1.0.5';
 
 const App = (() => {
   'use strict';
@@ -123,6 +123,8 @@ const App = (() => {
   let currentUserIdForMigration = null;
   let isImportModalOpen = false;
   let authInFlight = false;
+  let bootstrapInFlight = false;
+  let lastBootstrappedUserId = null;
   let authButtonTarget = null;
   let authButtonOriginalHtml = '';
   
@@ -189,11 +191,20 @@ const App = (() => {
     authButtonOriginalHtml = '';
   }
   
+  function updateAppShellVisibility() {
+    const ready = getAppState() === 'READY';
+    const app = document.getElementById('app');
+    const nav = document.getElementById('bottom-nav');
+    if (app) app.hidden = !ready;
+    if (nav) nav.hidden = !ready;
+  }
+
   function setAppState(val) {
     if (DEBUG_AUTH) {
       console.log(`[${new Date().toISOString()}] TRANSITION: ${_internalAppState} ↓ ${val}`);
     }
     _internalAppState = val;
+    updateAppShellVisibility();
     if (DEBUG_AUTH) updateDebugPanel();
   }
 
@@ -390,11 +401,11 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       logBoot('[Firebase Fallback]', 'Firebase unavailable; finalizing startup.');
       setAppState('UNAUTHENTICATED');
       hideLoadingScreen();
-      renderCurrentScreen();
+      const authOverlay = document.getElementById('auth-overlay');
+      if (authOverlay) authOverlay.classList.add('show');
     }
   }
 
-  
   async function handleAuthStateChange(user) {
     logBoot('[onAuthStateChanged Fired]', user ? user.uid : 'null');
 
@@ -409,7 +420,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       const userId = user.uid;
       logBoot('[User Logged In]', userId);
       currentUserIdForMigration = userId;
-      
+
       const authOverlay = document.getElementById('auth-overlay');
       if (authOverlay && authOverlay.classList.contains('show')) {
         authOverlay.classList.remove('show');
@@ -417,7 +428,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
 
       setAppState('AUTHENTICATED');
       setAppState('PROFILE_LOADING');
-      
+
       logBoot('[Calling Bootstrap User]', userId);
       bootstrapUser(userId);
     } else {
@@ -429,10 +440,10 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       } catch (e) {
         logAuthError('Redirect check error', e);
       }
-      
+
       if (auth.currentUser) {
-         logBoot('[Redirect Resolved User]', 'Aborting unauthenticated transition.');
-         return;
+        logBoot('[Redirect Resolved User]', 'Aborting unauthenticated transition.');
+        return;
       }
 
       logBoot('[User Logged Out]', 'Definitive unauthenticated state.');
@@ -443,7 +454,6 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
 
       setAppState('UNAUTHENTICATED');
 
-      // Clear in-memory state completely
       state.missions = [];
       state.attributes = [];
       state.actions = [];
@@ -459,14 +469,24 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
         unsubscribeList = [];
         syncActive = false;
       }
-      
-      // Show auth screen, hide loading screen
-      if (authOverlay) authOverlay.classList.add('show');
+
+      lastBootstrappedUserId = null;
       hideLoadingScreen();
     }
   }
 
   async function bootstrapUser(userId) {
+    if (bootstrapInFlight && lastBootstrappedUserId === userId) {
+      logBoot('[Bootstrap Skipped]', 'Bootstrap already in progress for this user.');
+      return;
+    }
+    if (getAppState() === 'READY' && lastBootstrappedUserId === userId) {
+      logBoot('[Bootstrap Skipped]', 'User already bootstrapped.');
+      return;
+    }
+
+    bootstrapInFlight = true;
+    lastBootstrappedUserId = userId;
     logBoot('[Bootstrap Started]', `userId type: ${typeof userId}`);
     logBoot('[Profile Query Started]', userId);
     try {
@@ -547,17 +567,20 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
         
         showToast(`Welcome back, ${state.profile.charName}`, 'success');
         
-        renderCurrentScreen();
+        switchTab(currentTab);
       }
     } catch (e) {
       authInFlight = false;
       resetSignInButtonState();
+      lastBootstrappedUserId = null;
       logAuthError('Bootstrap failed', e);
       showToast("Failed to load user data. Check connection.", "error");
       hideLoadingScreen();
       setAppState('UNAUTHENTICATED');
       const authOverlay = document.getElementById('auth-overlay');
       if (authOverlay) authOverlay.classList.add('show');
+    } finally {
+      bootstrapInFlight = false;
     }
   }
 
@@ -611,6 +634,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   }
 
   function renderCurrentScreen() {
+    if (getAppState() !== 'READY') return;
     assertValidRender('dashboard');
     if(DEBUG_AUTH) console.log(`[${new Date().toISOString()}] RENDER: Dashboard rendered`);
     if (currentTab === 'today') {
@@ -1326,13 +1350,23 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   // Tab Switching
   // ---------------------------------------------------------------------------
   function switchTab(tabName) {
-    if (currentTab === tabName && !currentMissionId) return;
-    currentTab = tabName;
+    const shouldSkipRender = getAppState() === 'READY'
+      && currentTab === tabName
+      && !currentMissionId
+      && document.querySelector('.screen.active');
 
-    // Remove active from all screens (CSS transition handles fade-out)
+    currentTab = tabName;
+    saveAll();
+
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.classList.toggle('active', item.dataset.screen === tabName);
+    });
+
+    if (getAppState() !== 'READY') return;
+    if (shouldSkipRender) return;
+
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
 
-    // Show target screen after a micro-delay for crossfade
     requestAnimationFrame(() => {
       if (tabName === 'missions') {
         document.getElementById('screen-missions').classList.add('active');
@@ -1351,12 +1385,6 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       }
     });
 
-    // Update nav
-    document.querySelectorAll('.nav-item').forEach(item => {
-      item.classList.toggle('active', item.dataset.screen === tabName);
-    });
-
-    // Haptic feedback
     try { navigator.vibrate && navigator.vibrate(10); } catch(e) {}
   }
 
@@ -2544,7 +2572,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       setupRealtimeListeners(auth.currentUser.uid);
     }
     
-    renderCurrentScreen();
+    switchTab(currentTab);
     showToast('Your journey begins!', 'success');
   }
 
@@ -2970,11 +2998,11 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   }
 
   function init() {
-    console.log(`[${new Date().toISOString()}] [BOOT LOG] [BOOT Started]`);
-    loadAll(); // Only loads currentTab and UI prefs
-    
-    // Set initial loading state
+    logBoot('[BOOT Started]');
+    loadAll();
+
     setAppState('AUTH_LOADING');
+    updateAppShellVisibility();
     const loadingScreen = document.getElementById('app-loading-screen');
     if (loadingScreen) loadingScreen.classList.remove('hidden');
 

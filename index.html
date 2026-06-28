@@ -8,11 +8,11 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="description" content="Build Your Character — A real-life RPG progression system. Complete actions, earn XP, level up.">
   <title>Project Human — Build Your Character</title>
-  <link rel="manifest" href="manifest.json?v=1.0.4">
+  <link rel="manifest" href="manifest.json?v=1.0.5">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="index.css?v=1.0.4">
+  <link rel="stylesheet" href="index.css?v=1.0.5">
   
   <!-- Loading Screen Styles (inline for instant render) -->
   <style>
@@ -206,10 +206,10 @@
   </div>
 
   <!-- App Container -->
-  <div id="app" class="app">
+  <div id="app" class="app" hidden>
 
     <!-- ==================== TODAY SCREEN ==================== -->
-    <div id="screen-today" class="screen active">
+    <div id="screen-today" class="screen">
       <div class="screen-scroll">
         <div class="screen-header">
           <h1 class="app-title">PROJECT <span class="highlight">HUMAN</span></h1>
@@ -620,7 +620,7 @@
   </div>
 
   <!-- Bottom Navigation -->
-  <nav id="bottom-nav" class="bottom-nav">
+  <nav id="bottom-nav" class="bottom-nav" hidden>
     <button class="nav-item active" data-screen="today" onclick="App.switchTab('today')">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
       <span>Today</span>
@@ -644,6 +644,6 @@
     <div id="modal-content" class="modal-content" onclick="event.stopPropagation()"></div>
   </div>
 
-  <script type="module" src="app.js?v=1.0.4"></script>
+  <script type="module" src="app.js?v=1.0.5"></script>
 </body>
 </html>
