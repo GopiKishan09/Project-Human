@@ -382,21 +382,6 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     if (isFirebaseEnabled && auth) {
       logBoot('[Firebase Initialized]');
       onAuthStateChanged(auth, handleAuthStateChange);
-      
-      // Handle Google Sign-In redirect result when app loads
-      getRedirectResult(auth)
-        .then((result) => {
-          const resolvedUser = result?.user || auth?.currentUser;
-          if (resolvedUser) {
-            logBoot('[Redirect Sign-In Successful]', resolvedUser.uid);
-            showToast("Logged in with Google!", "success");
-            return handleAuthStateChange(resolvedUser);
-          }
-        })
-        .catch((e) => {
-          logAuthError('Redirect sign-in failed', e);
-          showToast("Sign-in failed: " + e.message, "error");
-        });
     } else {
       logBoot('[Firebase Fallback]', 'Firebase unavailable; finalizing startup.');
       setAppState('UNAUTHENTICATED');
@@ -433,15 +418,19 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       bootstrapUser(userId);
     } else {
       logBoot('[No User]', 'Awaiting redirect resolution if pending...');
+      let redirectResult = null;
       try {
         logBoot('[getRedirectResult Started]');
-        await getRedirectResult(auth);
+        redirectResult = await getRedirectResult(auth);
         logBoot('[getRedirectResult Finished]');
       } catch (e) {
         logAuthError('Redirect check error', e);
+        if (e.code !== 'auth/redirect-cancelled-by-user') {
+          showToast("Sign-in failed: " + e.message, "error");
+        }
       }
 
-      if (auth.currentUser) {
+      if (auth.currentUser || (redirectResult && redirectResult.user)) {
         logBoot('[Redirect Resolved User]', 'Aborting unauthenticated transition.');
         return;
       }
