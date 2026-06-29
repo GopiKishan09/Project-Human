@@ -128,22 +128,47 @@ const App = (() => {
   let authButtonTarget = null;
   let authButtonOriginalHtml = '';
   
-  const DEBUG_AUTH = false;
+  const DEBUG_AUTH = true;
   let _internalAppState = 'BOOT';
 
+  function showOnScreenLog(msg) {
+    let debugBox = document.getElementById('mobile-debug-box');
+    if (!debugBox) {
+      debugBox = document.createElement('div');
+      debugBox.id = 'mobile-debug-box';
+      debugBox.style.position = 'fixed';
+      debugBox.style.bottom = '0';
+      debugBox.style.left = '0';
+      debugBox.style.width = '100%';
+      debugBox.style.height = '40vh';
+      debugBox.style.backgroundColor = 'rgba(0,0,0,0.85)';
+      debugBox.style.color = '#0f0';
+      debugBox.style.zIndex = '999999';
+      debugBox.style.overflowY = 'scroll';
+      debugBox.style.padding = '10px';
+      debugBox.style.fontFamily = 'monospace';
+      debugBox.style.fontSize = '12px';
+      debugBox.style.pointerEvents = 'none';
+      document.body.appendChild(debugBox);
+    }
+    const line = document.createElement('div');
+    line.textContent = msg;
+    debugBox.appendChild(line);
+    debugBox.scrollTop = debugBox.scrollHeight;
+  }
+
   function logBoot(message, detail) {
-    if (!DEBUG_AUTH) return;
     const suffix = detail === undefined ? '' : ` ${detail}`;
-    console.log(`[${new Date().toISOString()}] [BOOT LOG] ${message}${suffix}`);
+    const logStr = `[BOOT LOG] ${message}${suffix}`;
+    console.log(`[${new Date().toISOString()}] ${logStr}`);
+    showOnScreenLog(logStr);
   }
 
   function logAuthError(context, error) {
     const normalized = error || {};
-    console.error(`[${new Date().toISOString()}] [AUTH ERROR] ${context}`, {
-      code: normalized.code || 'unknown',
-      message: normalized.message || String(normalized),
-      stack: normalized.stack || null
-    });
+    const logStr = `[AUTH ERROR] ${context} | ${normalized.code || 'unknown'} | ${normalized.message || String(normalized)}`;
+    console.error(`[${new Date().toISOString()}] ${logStr}`, normalized);
+    showOnScreenLog(logStr);
   }
 
   
