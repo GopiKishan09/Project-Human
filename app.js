@@ -689,44 +689,23 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       setSignInButtonLoading(signInBtn, originalBtnText);
     }
     
-    // Check if mobile or standalone/Android wrapper
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
-      || localStorage.getItem('isAndroidApp') === 'true'
-      || window.matchMedia('(display-mode: standalone)').matches;
-
-    if (isMobile) {
-      logBoot('[Redirect Started]');
-      signInWithRedirect(auth, googleProvider)
-        .catch(e => {
-          authInFlight = false;
-          resetSignInButtonState();
-          logAuthError('Sign-in with redirect failed', e);
-          const isUnauthorizedDomain = e?.code === 'auth/unauthorized-domain';
-          showToast(isUnauthorizedDomain ? 'This app domain is not authorized in Firebase Authentication. Add it in the Firebase console.' : "Sign-in failed: " + e.message, "error");
-          setAppState('UNAUTHENTICATED');
-          hideLoadingScreen();
-          const authOverlay = document.getElementById('auth-overlay');
-          if (authOverlay) authOverlay.classList.add('show');
-        });
-    } else {
-      logBoot('[Popup Started]');
-      signInWithPopup(auth, googleProvider)
-        .then((result) => {
-          logBoot('[Firebase Credential Received]', result?.user?.uid || 'pending');
-          showToast("Logged in with Google", "success");
-        })
-        .catch(e => {
-          authInFlight = false;
-          resetSignInButtonState();
-          logAuthError('Sign-in with popup failed', e);
-          const isUnauthorizedDomain = e?.code === 'auth/unauthorized-domain';
-          showToast(isUnauthorizedDomain ? 'This app domain is not authorized in Firebase Authentication. Add it in the Firebase console.' : "Sign-in failed: " + e.message, "error");
-          setAppState('UNAUTHENTICATED');
-          hideLoadingScreen();
-          const authOverlay = document.getElementById('auth-overlay');
-          if (authOverlay) authOverlay.classList.add('show');
-        });
-    }
+    logBoot('[Popup Started]');
+    signInWithPopup(auth, googleProvider)
+      .then((result) => {
+        logBoot('[Firebase Credential Received]', result?.user?.uid || 'pending');
+        showToast("Logged in with Google", "success");
+      })
+      .catch(e => {
+        authInFlight = false;
+        resetSignInButtonState();
+        logAuthError('Sign-in with popup failed', e);
+        const isUnauthorizedDomain = e?.code === 'auth/unauthorized-domain';
+        showToast(isUnauthorizedDomain ? 'This app domain is not authorized in Firebase Authentication. Add it in the Firebase console.' : "Sign-in failed: " + e.message, "error");
+        setAppState('UNAUTHENTICATED');
+        hideLoadingScreen();
+        const authOverlay = document.getElementById('auth-overlay');
+        if (authOverlay) authOverlay.classList.add('show');
+      });
   }
 
   function signOut() {
