@@ -2993,7 +2993,7 @@ ul, ol {
 .onboarding-step {
   position: absolute;
   inset: 0;
-  padding: var(--spacing-xl);
+  padding: 140px var(--spacing-lg) var(--spacing-lg);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3029,6 +3029,10 @@ ul, ol {
   gap: var(--spacing-lg);
   position: relative;
   z-index: 1;
+  flex: 1;
+  margin: 0 auto;
+  padding: var(--spacing-2xl) var(--spacing-md);
+  justify-content: flex-start;
 }
 
 .onboarding-glow {
