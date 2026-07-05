@@ -798,6 +798,10 @@ ul, ol {
   padding-bottom: var(--spacing-sm);
   -ms-overflow-style: none;
   scrollbar-width: none;
+  margin-left: calc(-1 * var(--spacing-lg));
+  margin-right: calc(-1 * var(--spacing-lg));
+  padding-left: var(--spacing-lg);
+  padding-right: calc(var(--spacing-lg) + 8px);
 }
 
 .icon-picker::-webkit-scrollbar,
