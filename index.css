@@ -1043,14 +1043,14 @@ ul, ol {
   font-weight: 900;
   text-shadow: 0 2px 12px rgba(245, 158, 11, 0.5), 0 0 4px rgba(245, 158, 11, 0.3);
   opacity: 0;
-  transform: translateY(0) scale(0.8);
+  transform: translate(-50%, 0) scale(0.8);
   transition: transform 0.9s var(--ease-out), opacity 0.9s var(--ease-out);
   letter-spacing: 0.02em;
 }
 
 .xp-popup.show {
   opacity: 1;
-  transform: translateY(-50px) scale(1);
+  transform: translate(-50%, -50px) scale(1);
 }
 
 

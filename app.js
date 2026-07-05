@@ -1252,7 +1252,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
 
     if (element) {
       const rect = element.getBoundingClientRect();
-      popup.style.left = rect.right + 'px';
+      popup.style.left = (rect.left + rect.width / 2) + 'px';
       popup.style.top = (rect.top + rect.height / 2) + 'px';
     } else {
       popup.style.left = '50%';
