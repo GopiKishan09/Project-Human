@@ -2997,7 +2997,7 @@ ul, ol {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   opacity: 1;
   pointer-events: auto;
   transform: translateX(0);
