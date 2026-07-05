@@ -795,7 +795,8 @@ ul, ol {
   display: flex;
   gap: var(--spacing-sm);
   overflow-x: auto;
-  padding-bottom: var(--spacing-sm);
+  padding-top: 6px;
+  padding-bottom: calc(var(--spacing-sm) + 2px);
   -ms-overflow-style: none;
   scrollbar-width: none;
   margin-left: calc(-1 * var(--spacing-lg));
