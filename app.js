@@ -63,6 +63,10 @@ const App = (() => {
     '🚀': 'rocket',
     '🎮': 'gamepad-2',
     '🐉': 'flame',
+    '🌱': 'sprout',
+    '🏛️': 'landmark',
+    '💎': 'gem',
+    '⭐': 'star',
     'Meditate': 'flower-2',
     'Read': 'book-open',
     'Workout': 'dumbbell',
@@ -77,7 +81,9 @@ const App = (() => {
 
   function refreshIcons() {
     if (window.lucide) {
-      setTimeout(() => window.lucide.createIcons(), 0);
+      requestAnimationFrame(() => {
+        window.lucide.createIcons();
+      });
     }
   }
 
@@ -1362,6 +1368,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
         document.getElementById('screen-profile').classList.add('active');
         renderProfileScreen();
       }
+      refreshIcons();
     });
 
     try { navigator.vibrate && navigator.vibrate(10); } catch(e) {}
@@ -2857,6 +2864,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     document.getElementById('screen-mission-detail').classList.add('active');
 
     renderMissionDetail(missionId);
+    refreshIcons();
   }
 
   function goBackToMissions() {
@@ -2864,6 +2872,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById('screen-missions').classList.add('active');
     renderMissionsScreen();
+    refreshIcons();
   }
 
   // ---------------------------------------------------------------------------
