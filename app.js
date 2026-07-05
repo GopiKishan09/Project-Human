@@ -1391,7 +1391,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     const fillEl = document.getElementById(`${idPrefix}-${statKey}-fill`);
     const valEl = document.getElementById(`${idPrefix}-${statKey}-val`);
     if (fillEl) fillEl.style.width = (levelInfo.progress * 100) + '%';
-    if (valEl) valEl.textContent = `Lv. ${levelInfo.level} (${Math.round(statXp)} XP)`;
+    if (valEl) valEl.innerHTML = `Lv. ${levelInfo.level}<br>${Math.round(statXp)} XP`;
   }
 
   function renderTodayScreen() {
