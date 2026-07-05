@@ -3136,8 +3136,16 @@ ul, ol {
 }
 
 .archetype-icon {
-  font-size: 1.8rem;
-  margin-bottom: 2px;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.archetype-icon svg {
+  width: 28px;
+  height: 28px;
+  color: var(--accent-primary);
 }
 
 .archetype-name {

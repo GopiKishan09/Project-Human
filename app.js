@@ -2460,6 +2460,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     
     document.querySelectorAll('.archetype-card').forEach(c => c.classList.remove('active'));
     document.getElementById('onboarding-overlay').classList.add('show');
+    refreshIcons();
   }
 
   function nextOnboardingStep() {
@@ -2479,6 +2480,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       step1.classList.remove('step-exiting');
       step2.style.display = 'block';
       step2.classList.add('step-entering');
+      refreshIcons();
       requestAnimationFrame(() => {
         step2.classList.remove('step-entering');
       });
