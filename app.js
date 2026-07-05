@@ -1275,7 +1275,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     const toast = document.createElement('div');
     toast.className = `toast ${type}-toast`;
     
-    if (undoCallback) {
+    if (undoCallback && type !== 'xp') {
       const textSpan = document.createElement('span');
       textSpan.textContent = message;
       toast.appendChild(textSpan);
