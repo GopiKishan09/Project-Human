@@ -600,7 +600,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       onSnapshot(doc(db, 'users', userId), docSnap => {
         if (docSnap.exists() && getAppState() === 'READY') {
           state.profile = docSnap.data();
-          renderCurrentScreen();
+          scheduleDebouncedRender();
         }
       })
     );
@@ -609,7 +609,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       onSnapshot(collection(db, 'users', userId, 'missions'), snapshot => {
         if (getAppState() !== 'READY') return;
         state.missions = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        renderCurrentScreen();
+        scheduleDebouncedRender();
       })
     );
 
@@ -617,7 +617,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       onSnapshot(collection(db, 'users', userId, 'attributes'), snapshot => {
         if (getAppState() !== 'READY') return;
         state.attributes = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        renderCurrentScreen();
+        scheduleDebouncedRender();
       })
     );
 
@@ -625,7 +625,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       onSnapshot(collection(db, 'users', userId, 'actions'), snapshot => {
         if (getAppState() !== 'READY') return;
         state.actions = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        renderCurrentScreen();
+        scheduleDebouncedRender();
       })
     );
 
@@ -634,9 +634,19 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
         if (getAppState() !== 'READY') return;
         state.completions = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         rebuildStatsFromCompletions();
-        renderCurrentScreen();
+        scheduleDebouncedRender();
       })
     );
+  }
+
+  // Debounced render: coalesces multiple rapid snapshot updates into a single render
+  let _renderRafId = null;
+  function scheduleDebouncedRender() {
+    if (_renderRafId) return; // Already scheduled
+    _renderRafId = requestAnimationFrame(() => {
+      _renderRafId = null;
+      renderCurrentScreen();
+    });
   }
 
   function renderCurrentScreen() {

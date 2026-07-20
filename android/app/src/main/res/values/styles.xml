@@ -14,4 +14,12 @@
         <item name="windowNoTitle">true</item>
         <item name="android:windowBackground">@color/colorBackground</item>
     </style>
+
+    <!-- Splash-specific theme: Android 12+ SplashScreen API -->
+    <style name="Theme.ProjectHuman.Splash" parent="Theme.ProjectHuman.NoActionBar">
+        <item name="android:windowBackground">@color/colorBackground</item>
+        <item name="android:statusBarColor">@color/colorBackground</item>
+        <item name="android:navigationBarColor">@color/colorBackground</item>
+    </style>
 </resources>
+

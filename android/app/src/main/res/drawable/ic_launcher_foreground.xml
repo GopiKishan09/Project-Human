@@ -3,7 +3,9 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Lightning bolt centered in adaptive icon safe zone (21-87 range) -->
     <path
         android:fillColor="#ffd04f"
-        android:pathData="M58,18 L34,58 L54,58 L46,90 L74,50 L54,50 Z"/>
+        android:pathData="M60,24 L36,56 L50,56 L44,84 L72,52 L56,52 Z"/>
 </vector>
+

@@ -1,0 +1,17 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <!-- Subtle circular glow background -->
+    <path
+        android:fillColor="#1a4f8cff"
+        android:pathData="M48,48m-40,0a40,40 0,1,1 80,0a40,40 0,1,1 -80,0"/>
+    <path
+        android:fillColor="#104f8cff"
+        android:pathData="M48,48m-46,0a46,46 0,1,1 92,0a46,46 0,1,1 -92,0"/>
+    <!-- Lightning bolt - perfectly centered -->
+    <path
+        android:fillColor="#ffd04f"
+        android:pathData="M52,12 L28,50 L44,50 L38,84 L68,46 L52,46 Z"/>
+</vector>

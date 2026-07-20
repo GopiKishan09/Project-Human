@@ -1,5 +1,7 @@
 package com.project.human
 
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
@@ -9,8 +11,11 @@ import android.net.NetworkRequest
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.Button
+import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 
 class SplashActivity : AppCompatActivity() {
 
@@ -21,6 +26,8 @@ class SplashActivity : AppCompatActivity() {
     private var isActivityAlive = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Android 12+ SplashScreen API — must be called before super.onCreate()
+        installSplashScreen()
         super.onCreate(savedInstanceState)
 
         try {
@@ -29,6 +36,34 @@ class SplashActivity : AppCompatActivity() {
             // If splash layout fails, go straight to main activity
             launchMainActivity()
             return
+        }
+
+        // Fade-in animation on the splash logo for premium feel
+        try {
+            val logoView = findViewById<ImageView>(R.id.splash_logo)
+            logoView?.let {
+                it.alpha = 0f
+                it.animate()
+                    .alpha(1f)
+                    .setDuration(600)
+                    .setInterpolator(AccelerateDecelerateInterpolator())
+                    .start()
+
+                // Subtle pulse animation after fade-in
+                mainHandler.postDelayed({
+                    if (isActivityAlive && !isFinishing) {
+                        val pulseAnimator = ObjectAnimator.ofFloat(it, "alpha", 0.6f, 1f).apply {
+                            duration = 1200
+                            repeatCount = ValueAnimator.INFINITE
+                            repeatMode = ValueAnimator.REVERSE
+                            interpolator = AccelerateDecelerateInterpolator()
+                        }
+                        pulseAnimator.start()
+                    }
+                }, 600)
+            }
+        } catch (e: Exception) {
+            // Animation is non-critical, ignore failures
         }
 
         connectivityManager = try {

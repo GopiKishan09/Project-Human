@@ -3,16 +3,28 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#060608">
+  <meta name="theme-color" content="#0a0a0f">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="description" content="Build Your Character — A real-life RPG progression system. Complete actions, earn XP, level up.">
+
+  <!-- Open Graph / Social Sharing -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Project Human — Build Your Character">
+  <meta property="og:description" content="A real-life RPG progression system. Complete actions, earn XP, level up your life.">
+  <meta property="og:url" content="https://project-human.netlify.app/">
+  <meta property="og:site_name" content="Project Human">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Project Human — Build Your Character">
+  <meta name="twitter:description" content="A real-life RPG progression system. Complete actions, earn XP, level up your life.">
+
   <title>Project Human — Build Your Character</title>
-  <link rel="manifest" href="manifest.json?v=1.0.6">
+  <link rel="manifest" href="manifest.json?v=1.0.7">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="index.css?v=1.0.6">
+  <link rel="stylesheet" href="index.css?v=1.0.7">
   
   <!-- Loading Screen Styles (inline for instant render) -->
   <style>
@@ -73,7 +85,7 @@
     }
     @keyframes loadingSkeleton { 0% { transform: translateX(-100%); } 100% { transform: translateX(400%); } }
   </style>
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/lucide@latest" defer></script>
 </head>
 <body>
 
@@ -647,6 +659,6 @@
     <div id="modal-content" class="modal-content" onclick="event.stopPropagation()"></div>
   </div>
 
-  <script type="module" src="app.js?v=1.0.6"></script>
+  <script type="module" src="app.js?v=1.0.7"></script>
 </body>
 </html>

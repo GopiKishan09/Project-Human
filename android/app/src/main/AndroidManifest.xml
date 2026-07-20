@@ -20,7 +20,7 @@
         <!-- Native Premium Splash Screen -->
         <activity
             android:name=".SplashActivity"
-            android:theme="@style/Theme.ProjectHuman.NoActionBar"
+            android:theme="@style/Theme.ProjectHuman.Splash"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

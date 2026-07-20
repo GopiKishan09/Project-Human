@@ -2,7 +2,7 @@
   "name": "Project Human",
   "short_name": "Project Human",
   "description": "Build Your Character — Real-life RPG progression system",
-  "start_url": "./index.html?v=1.0.4",
+  "start_url": "./index.html?v=1.0.7",
   "display": "standalone",
   "background_color": "#0a0a0f",
   "theme_color": "#0a0a0f",

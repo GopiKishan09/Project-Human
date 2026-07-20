@@ -2,43 +2,50 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#0a0a0f"
-    android:gravity="center">
+    android:background="#0a0a0f">
 
     <LinearLayout
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:gravity="center">
+        android:gravity="center_horizontal"
+        android:layout_centerInParent="true"
+        android:paddingStart="32dp"
+        android:paddingEnd="32dp">
 
-        <!-- Logo Icon (Lightning Bolt Vector) -->
+        <!-- Logo Icon (Dedicated Splash Icon) -->
         <ImageView
             android:id="@+id/splash_logo"
-            android:layout_width="96dp"
-            android:layout_height="96dp"
-            android:layout_marginBottom="24dp"
-            android:src="@drawable/ic_launcher_foreground"
+            android:layout_width="88dp"
+            android:layout_height="88dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="28dp"
+            android:src="@drawable/splash_icon"
             android:contentDescription="@string/app_name" />
 
         <!-- Title: PROJECT HUMAN -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
             android:text="PROJECT HUMAN"
             android:textColor="#ffffff"
-            android:textSize="32sp"
+            android:textSize="28sp"
             android:textStyle="bold"
-            android:letterSpacing="0.15" />
+            android:letterSpacing="0.15"
+            android:gravity="center" />
 
         <!-- Subtitle: Build Your Character -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
             android:layout_marginTop="8dp"
             android:text="Build Your Character"
             android:textColor="#8e8e93"
-            android:textSize="16sp"
-            android:letterSpacing="0.05" />
+            android:textSize="15sp"
+            android:letterSpacing="0.05"
+            android:gravity="center" />
 
     </LinearLayout>
 
