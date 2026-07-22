@@ -428,6 +428,9 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
         authOverlay.classList.remove('show');
       }
 
+      // Show loading screen NOW — user is real, bootstrap will load data
+      showLoadingScreen();
+
       setAppState('AUTHENTICATED');
       setAppState('PROFILE_LOADING');
 
@@ -683,26 +686,59 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     const signInBtn = (event && event.currentTarget) ? event.currentTarget : document.querySelector('.auth-btn-google');
     const originalBtnText = signInBtn ? signInBtn.innerHTML : '';
     authInFlight = true;
-    showLoadingScreen();
-    setAppState('AUTH_LOADING');
     logBoot('[Sign-In Button Clicked]');
 
+    // Only show button loading — NOT the full loading screen.
+    // The loading screen will be shown by handleAuthStateChange once Firebase
+    // confirms a real user, preventing the stuck-loading-screen bug when the
+    // user closes the popup without signing in.
     if (signInBtn) {
       setSignInButtonLoading(signInBtn, originalBtnText);
     }
+
+    // Safety timeout: if popup auth hangs for 30s, auto-recover
+    const authSafetyTimer = setTimeout(() => {
+      if (authInFlight) {
+        logBoot('[Auth Safety Timeout]', 'Popup auth timed out after 30s. Recovering.');
+        authInFlight = false;
+        resetSignInButtonState();
+        hideLoadingScreen();
+        const authOverlay = document.getElementById('auth-overlay');
+        if (authOverlay) authOverlay.classList.add('show');
+        setAppState('UNAUTHENTICATED');
+      }
+    }, 30000);
     
     logBoot('[Popup Started]');
     signInWithPopup(auth, googleProvider)
       .then((result) => {
+        clearTimeout(authSafetyTimer);
         logBoot('[Firebase Credential Received]', result?.user?.uid || 'pending');
+        // Show loading screen NOW — user is confirmed, bootstrap will begin
+        showLoadingScreen();
         showToast("Logged in with Google", "success");
       })
       .catch(e => {
+        clearTimeout(authSafetyTimer);
         authInFlight = false;
         resetSignInButtonState();
-        logAuthError('Sign-in with popup failed', e);
-        const isUnauthorizedDomain = e?.code === 'auth/unauthorized-domain';
-        showToast(isUnauthorizedDomain ? 'This app domain is not authorized in Firebase Authentication. Add it in the Firebase console.' : "Sign-in failed: " + e.message, "error");
+
+        // Silently handle user-initiated popup dismissals — no error toast needed
+        const silentErrors = [
+          'auth/popup-closed-by-user',
+          'auth/cancelled-popup-request',
+          'auth/user-cancelled'
+        ];
+        if (silentErrors.includes(e?.code)) {
+          logBoot('[Popup Dismissed]', e.code);
+        } else {
+          logAuthError('Sign-in with popup failed', e);
+          const isUnauthorizedDomain = e?.code === 'auth/unauthorized-domain';
+          showToast(isUnauthorizedDomain
+            ? 'This app domain is not authorized in Firebase Authentication. Add it in the Firebase console.'
+            : "Sign-in failed: " + e.message, "error");
+        }
+
         setAppState('UNAUTHENTICATED');
         hideLoadingScreen();
         const authOverlay = document.getElementById('auth-overlay');
