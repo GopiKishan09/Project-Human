@@ -231,25 +231,48 @@
           <h1 class="app-title">PROJECT <span class="highlight">HUMAN</span></h1>
         </div>
 
-        <!-- Character Overview Card (Prominent Top Section) -->
+        <!-- Character HUD Card (Gaming-Style) -->
         <div class="character-overview-card" id="character-overview-card">
-          <div class="char-overview-header">
-            <div class="char-identity">
+          <div class="char-hud-layout">
+            <!-- Level Ring -->
+            <div class="char-level-ring-wrap">
+              <svg class="char-level-ring" viewBox="0 0 120 120">
+                <!-- Background track -->
+                <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="6"/>
+                <!-- XP progress arc -->
+                <circle cx="60" cy="60" r="52" fill="none" stroke="url(#xpGradient)" stroke-width="6" stroke-linecap="round"
+                  id="xp-ring-fill"
+                  stroke-dasharray="326.73"
+                  stroke-dashoffset="326.73"
+                  transform="rotate(-90 60 60)"/>
+                <!-- Gradient definition -->
+                <defs>
+                  <linearGradient id="xpGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#7C3AED"/>
+                    <stop offset="50%" stop-color="#9333EA"/>
+                    <stop offset="100%" stop-color="#A855F7"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div class="char-level-center">
+                <span class="char-level-num" id="stat-level">1</span>
+                <span class="char-level-tag">LVL</span>
+              </div>
+            </div>
+
+            <!-- Character Info -->
+            <div class="char-hud-info">
               <h2 class="char-name-display" id="today-char-name">Character Name</h2>
               <span class="char-rank-badge" id="today-char-rank">Civilian</span>
-            </div>
-            <div class="char-level-badge">
-              <span class="char-level-label">Level</span>
-              <span class="char-level-val" id="stat-level">1</span>
-            </div>
-          </div>
-          <div class="char-xp-section">
-            <div class="char-xp-info">
-              <span class="char-xp-label">XP Progress</span>
-              <span class="char-xp-numbers"><span id="xp-bar-current">0</span> / <span id="xp-bar-next">100</span> XP</span>
-            </div>
-            <div class="xp-bar">
-              <div class="xp-bar-fill" id="xp-bar-fill"></div>
+              <div class="char-xp-section">
+                <div class="char-xp-info">
+                  <span class="char-xp-label">XP Progress</span>
+                  <span class="char-xp-numbers"><span id="xp-bar-current">0</span> / <span id="xp-bar-next">100</span> XP</span>
+                </div>
+                <div class="xp-bar">
+                  <div class="xp-bar-fill" id="xp-bar-fill"></div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

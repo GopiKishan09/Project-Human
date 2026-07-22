@@ -1486,10 +1486,18 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       }
     }
 
-    // XP bar
+    // XP bar + ring
     document.getElementById('xp-bar-current').textContent = levelInfo.xpInLevel;
     document.getElementById('xp-bar-next').textContent = levelInfo.xpNeeded;
     document.getElementById('xp-bar-fill').style.width = (levelInfo.progress * 100) + '%';
+
+    // Update circular level ring
+    const xpRing = document.getElementById('xp-ring-fill');
+    if (xpRing) {
+      const circumference = 2 * Math.PI * 52; // r=52 from SVG
+      const offset = circumference - (circumference * levelInfo.progress);
+      xpRing.style.strokeDashoffset = offset;
+    }
 
     // Group actions by mission
     const container = document.getElementById('today-actions');
