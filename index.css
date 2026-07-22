@@ -32,17 +32,18 @@
   --accent-emerald: #34d399;
   --accent-amber: #fbbf24;
   --accent-rose: #fb7185;
-  --accent-primary: #8B5CF6;
+  --accent-primary: #9333EA;
   --accent-cyan: #22d3ee;
-  --accent-indigo: #6366f1;
-  --accent-secondary-purple: #A78BFA;
+  --accent-indigo: #7C3AED;
+  --accent-secondary-purple: #A855F7;
+  --accent-gold: #F59E0B;
 
   /* ── Page Layout ── */
   --page-padding: 20px;
 
   /* ── Gradients ── */
-  --gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%);
-  --gradient-primary-hover: linear-gradient(135deg, #7c7ff5 0%, #9b6ff8 50%, #b89dfc 100%);
+  --gradient-primary: linear-gradient(135deg, #7C3AED 0%, #9333EA 50%, #A855F7 100%);
+  --gradient-primary-hover: linear-gradient(135deg, #8B45F5 0%, #A345F5 50%, #B96DF8 100%);
   --gradient-gold: linear-gradient(135deg, #f59e0b 0%, #f43f5e 100%);
   --gradient-emerald: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
   --gradient-rose: linear-gradient(135deg, #f43f5e 0%, #ec4899 100%);
@@ -55,8 +56,8 @@
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.25);
   --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.55), 0 4px 12px rgba(0, 0, 0, 0.3);
   --shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.65), 0 8px 24px rgba(0, 0, 0, 0.35);
-  --shadow-glow: 0 0 24px rgba(99, 102, 241, 0.2), 0 0 8px rgba(99, 102, 241, 0.1);
-  --shadow-glow-lg: 0 0 40px rgba(99, 102, 241, 0.25), 0 0 12px rgba(99, 102, 241, 0.15);
+  --shadow-glow: 0 0 24px rgba(147, 51, 234, 0.2), 0 0 8px rgba(147, 51, 234, 0.1);
+  --shadow-glow-lg: 0 0 40px rgba(147, 51, 234, 0.25), 0 0 12px rgba(147, 51, 234, 0.15);
   --shadow-glow-amber: 0 0 20px rgba(245, 158, 11, 0.2);
   --shadow-inner: inset 0 1px 1px rgba(255, 255, 255, 0.04);
 
@@ -151,7 +152,7 @@ body {
     position: fixed;
     inset: 0;
     background:
-      radial-gradient(ellipse 60% 40% at 50% -5%, rgba(99, 102, 241, 0.07), transparent 70%),
+      radial-gradient(ellipse 60% 40% at 50% -5%, rgba(147, 51, 234, 0.07), transparent 70%),
       radial-gradient(ellipse 40% 50% at 85% 85%, rgba(139, 92, 246, 0.04), transparent 50%),
       radial-gradient(ellipse 30% 30% at 10% 90%, rgba(34, 211, 238, 0.03), transparent 50%);
     pointer-events: none;
@@ -212,7 +213,7 @@ ul, ol {
 
 /* Selection Color */
 ::selection {
-  background: rgba(99, 102, 241, 0.3);
+  background: rgba(147, 51, 234, 0.3);
   color: #fff;
 }
 
@@ -462,8 +463,8 @@ ul, ol {
 
 .empty-state.clickable:hover {
   background: rgba(255, 255, 255, 0.03);
-  border-color: rgba(99, 102, 241, 0.3);
-  box-shadow: 0 0 20px rgba(99, 102, 241, 0.05);
+  border-color: rgba(147, 51, 234, 0.3);
+  box-shadow: 0 0 20px rgba(147, 51, 234, 0.05);
 }
 
 .empty-icon {
@@ -545,7 +546,7 @@ ul, ol {
 .btn-primary {
   background: var(--gradient-primary);
   color: #fff;
-  box-shadow: var(--shadow-sm), 0 0 0 1px rgba(99, 102, 241, 0.2);
+  box-shadow: var(--shadow-sm), 0 0 0 1px rgba(147, 51, 234, 0.2);
   border: none;
 }
 
@@ -703,7 +704,7 @@ ul, ol {
   outline: none;
   border-color: var(--accent-primary);
   background: rgba(0, 0, 0, 0.35);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15), 0 0 20px rgba(99, 102, 241, 0.08);
+  box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.15), 0 0 20px rgba(147, 51, 234, 0.08);
 }
 
 /* ── Modal ── */
@@ -1026,7 +1027,7 @@ ul, ol {
 
 .toast.success-toast { border-color: rgba(52, 211, 153, 0.35); box-shadow: var(--shadow-md), 0 0 12px rgba(52, 211, 153, 0.1); }
 .toast.error-toast { border-color: rgba(251, 113, 133, 0.35); box-shadow: var(--shadow-md), 0 0 12px rgba(251, 113, 133, 0.1); }
-.toast.xp-toast { border-color: rgba(99, 102, 241, 0.35); box-shadow: var(--shadow-md), var(--shadow-glow); }
+.toast.xp-toast { border-color: rgba(147, 51, 234, 0.35); box-shadow: var(--shadow-md), var(--shadow-glow); }
 
 .undo-btn {
   color: var(--accent-blue);
@@ -1146,29 +1147,29 @@ ul, ol {
   font-weight: 700;
 }
 
-/* Active indicator dot */
+/* Active indicator dot — gold for RPG reward feel */
 .nav-item.active::after {
   content: '';
   position: absolute;
   bottom: -2px;
   left: 50%;
   transform: translateX(-50%);
-  width: 4px;
-  height: 4px;
-  background: var(--accent-primary);
+  width: 5px;
+  height: 5px;
+  background: var(--accent-gold);
   border-radius: var(--radius-full);
-  box-shadow: 0 0 8px rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
   animation: navDotPulse 2s ease-in-out infinite;
 }
 
 @keyframes navDotPulse {
-  0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(99, 102, 241, 0.5); }
-  50% { opacity: 0.7; box-shadow: 0 0 4px rgba(99, 102, 241, 0.3); }
+  0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(245, 158, 11, 0.6); }
+  50% { opacity: 0.7; box-shadow: 0 0 4px rgba(245, 158, 11, 0.3); }
 }
 
 .nav-item.active svg {
   color: var(--accent-primary);
-  filter: drop-shadow(0 0 6px rgba(99, 102, 241, 0.45));
+  filter: drop-shadow(0 0 6px rgba(147, 51, 234, 0.45));
 }
 
 /* FAB */
@@ -1230,7 +1231,7 @@ ul, ol {
   inset: 0;
   background:
     radial-gradient(ellipse 80% 60% at 10% -20%, rgba(245, 158, 11, 0.06) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 50% at 90% 110%, rgba(99, 102, 241, 0.04) 0%, transparent 50%);
+    radial-gradient(ellipse 50% 50% at 90% 110%, rgba(147, 51, 234, 0.04) 0%, transparent 50%);
   pointer-events: none;
 }
 
@@ -1286,7 +1287,7 @@ ul, ol {
 
 .char-level-badge {
   background: var(--gradient-primary);
-  box-shadow: var(--shadow-sm), 0 0 16px rgba(99, 102, 241, 0.2);
+  box-shadow: var(--shadow-sm), 0 0 16px rgba(147, 51, 234, 0.2);
   width: 48px;
   height: 48px;
   border-radius: var(--radius-md);
@@ -1360,7 +1361,7 @@ ul, ol {
 .xp-bar-fill {
   height: 100%;
   background: var(--gradient-primary);
-  box-shadow: 0 0 12px rgba(99, 102, 241, 0.45);
+  box-shadow: 0 0 12px rgba(147, 51, 234, 0.45);
   transition: width 0.6s var(--ease-out);
   border-radius: var(--radius-full);
   position: relative;
@@ -1803,8 +1804,8 @@ ul, ol {
 
 .xp-badge {
   color: var(--accent-primary);
-  background: rgba(99, 102, 241, 0.08);
-  border-color: rgba(99, 102, 241, 0.15);
+  background: rgba(147, 51, 234, 0.08);
+  border-color: rgba(147, 51, 234, 0.15);
 }
 
 .recurring-badge {
@@ -2010,7 +2011,7 @@ ul, ol {
   background: var(--gradient-primary);
   border-radius: var(--radius-full);
   transition: width 0.5s var(--ease-out);
-  box-shadow: 0 0 12px rgba(99, 102, 241, 0.35);
+  box-shadow: 0 0 12px rgba(147, 51, 234, 0.35);
   position: relative;
   will-change: width;
 }
@@ -2124,7 +2125,7 @@ ul, ol {
   stroke-width: 6;
   stroke-linecap: round;
   transition: stroke-dashoffset 1.5s var(--ease-spring);
-  filter: drop-shadow(0 0 6px rgba(99, 102, 241, 0.25));
+  filter: drop-shadow(0 0 6px rgba(147, 51, 234, 0.25));
 }
 
 .progress-ring-text {
@@ -2251,8 +2252,8 @@ ul, ol {
   font-size: 0.62rem;
   font-weight: 700;
   color: var(--accent-primary);
-  background: rgba(99, 102, 241, 0.08);
-  border: 1px solid rgba(99, 102, 241, 0.18);
+  background: rgba(147, 51, 234, 0.08);
+  border: 1px solid rgba(147, 51, 234, 0.18);
   padding: 3px 10px;
   border-radius: var(--radius-full);
   text-transform: uppercase;
@@ -2885,13 +2886,13 @@ ul, ol {
 .auth-logo {
   margin-bottom: var(--spacing-xl);
   color: var(--accent-primary);
-  filter: drop-shadow(0 0 16px rgba(99, 102, 241, 0.3));
+  filter: drop-shadow(0 0 16px rgba(147, 51, 234, 0.3));
   animation: authLogoPulse 3s ease-in-out infinite;
 }
 
 @keyframes authLogoPulse {
-  0%, 100% { filter: drop-shadow(0 0 16px rgba(99, 102, 241, 0.3)); }
-  50% { filter: drop-shadow(0 0 24px rgba(99, 102, 241, 0.5)); }
+  0%, 100% { filter: drop-shadow(0 0 16px rgba(147, 51, 234, 0.3)); }
+  50% { filter: drop-shadow(0 0 24px rgba(147, 51, 234, 0.5)); }
 }
 
 .auth-title {
@@ -3059,7 +3060,7 @@ ul, ol {
   transform: translate(-50%, -50%);
   width: 280px;
   height: 280px;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(147, 51, 234, 0.15) 0%, transparent 70%);
   z-index: 0;
   animation: glowPulse 4s ease-in-out infinite;
 }
@@ -3147,9 +3148,9 @@ ul, ol {
 }
 
 .archetype-card.active {
-  background: rgba(99, 102, 241, 0.08);
+  background: rgba(147, 51, 234, 0.08);
   border-color: var(--accent-primary);
-  box-shadow: var(--shadow-glow), inset 0 0 20px rgba(99, 102, 241, 0.05);
+  box-shadow: var(--shadow-glow), inset 0 0 20px rgba(147, 51, 234, 0.05);
 }
 
 .archetype-icon {
@@ -3410,7 +3411,7 @@ ul, ol {
 
 .app-loading-icon {
   color: var(--accent-primary);
-  filter: drop-shadow(0 0 16px rgba(99, 102, 241, 0.4));
+  filter: drop-shadow(0 0 16px rgba(147, 51, 234, 0.4));
 }
 
 .app-loading-title {
