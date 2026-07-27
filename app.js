@@ -839,7 +839,6 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       });
       state.missions = state.missions.filter(m => m.id !== missionId);
       rebuildStatsFromCompletions();
-      saveAll();
       recalculateStreak();
       saveAll();
     }
@@ -1179,14 +1178,16 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     if (daysElapsed <= 0 || state.actions.length === 0) return 0;
 
     let totalPercent = 0;
+    let activeDays = 0;
     for (let i = 0; i < daysElapsed; i++) {
       const d = addDays(weekStart, i);
       const dayActions = state.actions.filter(a => shouldActionAppearOnDate(a, d) || state.completions.some(c => c.actionId === a.id && c.date === d));
       if (dayActions.length === 0) continue;
       const completed = dayActions.filter(a => state.completions.some(c => c.actionId === a.id && c.date === d)).length;
       totalPercent += completed / dayActions.length;
+      activeDays++;
     }
-    return Math.round((totalPercent / daysElapsed) * 100);
+    return activeDays > 0 ? Math.round((totalPercent / activeDays) * 100) : 0;
   }
 
   function getMonthlyCompletionPercent() {
@@ -1196,14 +1197,16 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     if (daysElapsed <= 0 || state.actions.length === 0) return 0;
 
     let totalPercent = 0;
+    let activeDays = 0;
     for (let i = 0; i < daysElapsed; i++) {
       const d = addDays(monthStart, i);
       const dayActions = state.actions.filter(a => shouldActionAppearOnDate(a, d) || state.completions.some(c => c.actionId === a.id && c.date === d));
       if (dayActions.length === 0) continue;
       const completed = dayActions.filter(a => state.completions.some(c => c.actionId === a.id && c.date === d)).length;
       totalPercent += completed / dayActions.length;
+      activeDays++;
     }
-    return Math.round((totalPercent / daysElapsed) * 100);
+    return activeDays > 0 ? Math.round((totalPercent / activeDays) * 100) : 0;
   }
 
   function getYearlyCompletionPercent() {
@@ -1375,6 +1378,11 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
         closeModal();
       }
     }
+  }
+
+  function declineImportLocalData() {
+    isImportModalOpen = false;
+    closeModal();
   }
 
   // ---------------------------------------------------------------------------
@@ -1873,10 +1881,12 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
 
     // Level badge ring
     document.getElementById('profile-level').textContent = levelInfo.level;
-    const xpRingFill = document.getElementById('xp-ring-fill');
-    const circumference = 2 * Math.PI * 60;
-    xpRingFill.style.strokeDasharray = circumference;
-    xpRingFill.style.strokeDashoffset = circumference - (circumference * levelInfo.progress);
+    const profileRingFill = document.getElementById('profile-xp-ring-fill');
+    if (profileRingFill) {
+      const circumference = 2 * Math.PI * 60;
+      profileRingFill.style.strokeDasharray = circumference;
+      profileRingFill.style.strokeDashoffset = circumference - (circumference * levelInfo.progress);
+    }
 
     // XP info
     document.getElementById('profile-xp-current').textContent = levelInfo.xpInLevel;
@@ -2464,7 +2474,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       renderTodayScreen();
 
       // Undo toast
-      showToast(`+${xpEarned} XP — ${action.name}`, 'xp', () => {
+      showToast(`+${xpEarned} XP — ${action.name}`, 'success', () => {
         // Undo: remove the completion
         dbDeleteCompletion(comp.id, actionId);
         if (isFirebaseEnabled && auth.currentUser) {
@@ -2808,7 +2818,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     if (currentTier > lastVictoryTier) {
       state.profile.lastVictoryDate = today;
       state.profile.lastVictoryTier = currentTier;
-      saveAll();
+      saveProfile(state.profile);
       showDailyVictoryOverlay(currentTier);
     }
   }

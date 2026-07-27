@@ -19,12 +19,12 @@
   <meta name="twitter:description" content="A real-life RPG progression system. Complete actions, earn XP, level up your life.">
 
   <title>Project Human — Build Your Character</title>
-  <link rel="manifest" href="manifest.json?v=1.0.7">
+  <link rel="manifest" href="manifest.json?v=1.8.0">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="index.css?v=1.0.7">
+  <link rel="stylesheet" href="index.css?v=1.8.0">
   
   <!-- Loading Screen Styles (inline for instant render) -->
   <style>
@@ -85,13 +85,13 @@
     }
     @keyframes loadingSkeleton { 0% { transform: translateX(-100%); } 100% { transform: translateX(400%); } }
   </style>
-  <script src="https://unpkg.com/lucide@latest" defer></script>
+  <script src="https://unpkg.com/lucide@0.469.0" defer></script>
 </head>
 <body>
 
   <!-- App Loading Screen -->
   <div id="app-loading-screen" class="app-loading-screen">
-    <div class="app-loading-icon"><i data-lucide="zap" style="width: 48px; height: 48px;"></i></div>
+    <div class="app-loading-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
     <h1 class="app-loading-title">PROJECT HUMAN</h1>
     <p class="app-loading-subtitle">Build Your Character</p>
     <div class="app-loading-bar-wrapper" style="width: 180px; height: 3px; background: rgba(255,255,255,0.06); border-radius: 9999px; overflow: hidden; margin-top: 28px;"><div style="width: 30%; height: 100%; background: linear-gradient(90deg, #6366f1, #a78bfa); border-radius: 9999px; animation: loadingSkeleton 1.8s infinite ease-in-out;"></div></div>
@@ -565,13 +565,13 @@
           <div class="level-badge-large">
             <svg class="xp-ring" viewBox="0 0 140 140">
               <defs>
-                <linearGradient id="xp-ring-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <linearGradient id="profile-xp-ring-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
                   <stop offset="0%" stop-color="#f59e0b"/>
                   <stop offset="100%" stop-color="#f43f5e"/>
                 </linearGradient>
               </defs>
               <circle class="xp-ring-bg" cx="70" cy="70" r="60"/>
-              <circle class="xp-ring-fill" id="xp-ring-fill" cx="70" cy="70" r="60"/>
+              <circle class="xp-ring-fill" id="profile-xp-ring-fill" cx="70" cy="70" r="60"/>
             </svg>
             <div class="level-badge-text">
               <span class="level-number" id="profile-level">1</span>
@@ -649,7 +649,7 @@
 
 
         <div class="app-footer">
-          <p>Project Human v1.8</p>
+          <p>Project Human v1.8.0</p>
           <p>Build Your Character.</p>
         </div>
       </div>
@@ -682,6 +682,6 @@
     <div id="modal-content" class="modal-content" onclick="event.stopPropagation()"></div>
   </div>
 
-  <script type="module" src="app.js?v=1.0.7"></script>
+  <script type="module" src="app.js?v=1.8.0"></script>
 </body>
 </html>
