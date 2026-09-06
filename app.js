@@ -2,10 +2,8 @@ import {
   auth,
   db,
   isFirebaseEnabled,
-  googleProvider,
-  signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   collection,
@@ -18,7 +16,7 @@ import {
   getDocs,
   onSnapshot,
   writeBatch
-} from './firebase.js?v=1.0.5';
+} from './firebase.js?v=1.9.0';
 
 const App = (() => {
   'use strict';
@@ -36,7 +34,7 @@ const App = (() => {
   const ICONS = ['🏆','💪','🧠','💰','🎯','📚','💼','🏃‍♂️','🎨','🔬','📈','❤️','🌟','⚡','🚀','🎮','🛡️','⚔️','🐉','🌍'];
   const COLORS = ['#4f8cff','#a855f7','#10b981','#f59e0b','#f43f5e','#ec4899','#06b6d4','#8b5cf6','#ef4444','#14b8a6'];
 
-  
+
   const emojiToLucide = {
     '💪': 'dumbbell',
     '🧠': 'brain',
@@ -144,7 +142,14 @@ const App = (() => {
   let lastBootstrappedUserId = null;
   let authButtonTarget = null;
   let authButtonOriginalHtml = '';
-  
+
+  // Phone OTP auth state
+  let recaptchaVerifier = null;
+  let phoneConfirmation = null;
+  let pendingPhoneNumber = '';
+  let otpResendInterval = null;
+  let otpResendSeconds = 0;
+
   const DEBUG_AUTH = false;
   let _internalAppState = 'BOOT';
 
@@ -163,7 +168,7 @@ const App = (() => {
     });
   }
 
-  
+
   // --- WATCHDOG ---
   let watchdogTimer = null;
   function startWatchdog() {
@@ -187,14 +192,14 @@ const App = (() => {
 
   function getAppState() { return _internalAppState; }
 
-  function setSignInButtonLoading(button, originalHtml) {
+  function setSignInButtonLoading(button, originalHtml, label) {
     if (!button) return;
     authButtonTarget = button;
     authButtonOriginalHtml = originalHtml;
     button.classList.add('auth-btn-loading');
     button.disabled = true;
     button.setAttribute('aria-busy', 'true');
-    button.innerHTML = '<span class="auth-loading-spinner" aria-hidden="true"></span><span class="auth-loading-label">Signing you in...</span>';
+    button.innerHTML = '<span class="auth-loading-spinner" aria-hidden="true"></span><span class="auth-loading-label">' + (label || 'Signing you in...') + '</span>';
   }
 
   function resetSignInButtonState() {
@@ -207,7 +212,7 @@ const App = (() => {
     authButtonTarget = null;
     authButtonOriginalHtml = '';
   }
-  
+
   function updateAppShellVisibility() {
     const ready = getAppState() === 'READY';
     const app = document.getElementById('app');
@@ -229,7 +234,7 @@ const App = (() => {
     if (!DEBUG_AUTH) return;
     const obVisible = document.getElementById('onboarding-overlay')?.classList.contains('show');
     const dashVisible = getAppState() === 'READY';
-    
+
     if (target === 'dashboard' && getAppState() !== 'READY') {
       console.error(`[RENDER ASSERTION FAILED] Attempted to render Dashboard while in state: ${getAppState()}`);
     }
@@ -239,7 +244,7 @@ const App = (() => {
     if (obVisible && target === 'dashboard') {
       console.error(`[RENDER ASSERTION FAILED] Dashboard and Onboarding visible simultaneously!`);
     }
-    
+
     console.log(`[${new Date().toISOString()}] RENDER ASSERTION PASSED for ${target}. State: ${getAppState()}`);
   }
 
@@ -261,7 +266,7 @@ const App = (() => {
     const lsVisible = document.getElementById('app-loading-screen') && !document.getElementById('app-loading-screen').classList.contains('hidden') ? 'Yes' : 'No';
     const obVisible = document.getElementById('onboarding-overlay') && document.getElementById('onboarding-overlay').classList.contains('show') ? 'Yes' : 'No';
     const dbRendered = (getAppState() === 'READY') ? 'Yes' : 'No';
-    
+
     panel.textContent = `=== FSM DEBUG ===
 State: ${getAppState()}
 UID: ${uid}
@@ -356,7 +361,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       });
     });
     state.profile.totalXp = totalXp;
-    
+
     // Round stats
     for (const key in state.profile.stats) {
       state.profile.stats[key] = Math.round(state.profile.stats[key]);
@@ -369,7 +374,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       if (savedTab && ['today', 'missions', 'progress', 'profile'].includes(savedTab)) {
         currentTab = savedTab;
       }
-      
+
       // Initialize in-memory state as purely empty
       state.missions = [];
       state.attributes = [];
@@ -427,6 +432,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       if (authOverlay && authOverlay.classList.contains('show')) {
         authOverlay.classList.remove('show');
       }
+      resetPhoneAuthUi();
 
       // Show loading screen NOW — user is real, bootstrap will load data
       showLoadingScreen();
@@ -437,24 +443,6 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       logBoot('[Calling Bootstrap User]', userId);
       bootstrapUser(userId);
     } else {
-      logBoot('[No User]', 'Awaiting redirect resolution if pending...');
-      let redirectResult = null;
-      try {
-        logBoot('[getRedirectResult Started]');
-        redirectResult = await getRedirectResult(auth);
-        logBoot('[getRedirectResult Finished]');
-      } catch (e) {
-        logAuthError('Redirect check error', e);
-        if (e.code !== 'auth/redirect-cancelled-by-user') {
-          showToast("Sign-in failed: " + e.message, "error");
-        }
-      }
-
-      if (auth.currentUser || (redirectResult && redirectResult.user)) {
-        logBoot('[Redirect Resolved User]', 'Aborting unauthenticated transition.');
-        return;
-      }
-
       logBoot('[User Logged Out]', 'Definitive unauthenticated state.');
       authInFlight = false;
       resetSignInButtonState();
@@ -500,11 +488,11 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     logBoot('[Profile Query Started]', userId);
     try {
       const userDocRef = doc(db, 'users', userId);
-      const docSnap = await (async () => { 
-  if (DEBUG_AUTH) console.log(`[${new Date().toISOString()}] FIRESTORE: Profile read started`); 
-  const res = await getDoc(userDocRef); 
-  if (DEBUG_AUTH) console.log(`[${new Date().toISOString()}] FIRESTORE: Profile exists = ${res.exists()}`); 
-  return res; 
+      const docSnap = await (async () => {
+  if (DEBUG_AUTH) console.log(`[${new Date().toISOString()}] FIRESTORE: Profile read started`);
+  const res = await getDoc(userDocRef);
+  if (DEBUG_AUTH) console.log(`[${new Date().toISOString()}] FIRESTORE: Profile exists = ${res.exists()}`);
+  return res;
 })()
 
       const profileExists = docSnap.exists() && !!docSnap.data()?.charName;
@@ -514,7 +502,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
         setAppState('PROFILE_NOT_FOUND');
         // NEW USER
         setAppState('NEW_USER');
-        
+
         // If it doesn't exist at all, create default profile immediately
         if (!docSnap.exists()) {
           await (async () => {
@@ -562,20 +550,20 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
         // Data is fully loaded in memory.
         rebuildStatsFromCompletions();
         recalculateStreak();
-        
+
         // Attach realtime listeners
         setupRealtimeListeners(userId);
-        
+
         setAppState('READY');
-        
+
         // Finalize UI
         hideLoadingScreen();
-        
+
         const onboardingOverlay = document.getElementById('onboarding-overlay');
         if (onboardingOverlay) onboardingOverlay.classList.remove('show');
-        
+
         showToast(`Welcome back, ${state.profile.charName}`, 'success');
-        
+
         switchTab(currentTab);
       }
     } catch (e) {
@@ -672,34 +660,257 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     refreshIcons();
   }
 
-  function signInWithGoogle(event) {
-    if (!isFirebaseEnabled) {
-      showToast("Cloud sync is not configured.", "error");
-      return;
-    }
+  // ---------------------------------------------------------------------------
+  // Phone OTP Authentication
+  // ---------------------------------------------------------------------------
+  const OTP_RESEND_SECONDS = 30;
 
-    if (authInFlight) {
-      logBoot('[Sign-In Request Ignored]', 'A Google auth request is already in progress.');
-      return;
-    }
+  function normalizePhoneNumber(countryCode, rawNumber) {
+    const ccDigits = String(countryCode || '').replace(/\D/g, '');
+    const digits = String(rawNumber || '').replace(/\D/g, '');
+    if (!ccDigits || !digits) return '';
+    return `+${ccDigits}${digits}`;
+  }
 
-    const signInBtn = (event && event.currentTarget) ? event.currentTarget : document.querySelector('.auth-btn-google');
-    const originalBtnText = signInBtn ? signInBtn.innerHTML : '';
+  function setAuthError(message) {
+    const el = document.getElementById('auth-error');
+    if (!el) return;
+    el.textContent = message || '';
+    el.style.display = message ? 'block' : 'none';
+  }
+
+  function clearAuthError() {
+    setAuthError('');
+  }
+
+  function describeAuthError(error) {
+    switch (error && error.code) {
+      case 'auth/invalid-phone-number':
+        return 'That phone number does not look valid. Check the country code and number.';
+      case 'auth/missing-phone-number':
+        return 'Enter your phone number to continue.';
+      case 'auth/invalid-verification-code':
+        return 'Incorrect OTP. Please check the code and try again.';
+      case 'auth/code-expired':
+        return 'This OTP has expired. Request a new one.';
+      case 'auth/too-many-requests':
+        return 'Too many attempts from this device. Please try again later.';
+      case 'auth/quota-exceeded':
+        return 'SMS limit reached for now. Please try again later.';
+      case 'auth/captcha-check-failed':
+      case 'auth/unauthorized-domain':
+        return 'This app domain is not authorized in Firebase Authentication. Add it in the Firebase console.';
+      case 'auth/operation-not-allowed':
+        return 'Phone sign-in is not enabled for this Firebase project.';
+      case 'auth/network-request-failed':
+        return 'Network error. Check your connection and try again.';
+      default:
+        return (error && error.message) ? error.message : 'Something went wrong. Please try again.';
+    }
+  }
+
+  function showAuthStep(step) {
+    const phoneStep = document.getElementById('auth-step-phone');
+    const otpStep = document.getElementById('auth-step-otp');
+    if (phoneStep) phoneStep.style.display = step === 'otp' ? 'none' : '';
+    if (otpStep) otpStep.style.display = step === 'otp' ? '' : 'none';
+    clearAuthError();
+
+    // Only pull focus while the sign-in overlay is actually on screen, so
+    // resetting state after login does not pop the keyboard on mobile.
+    const overlay = document.getElementById('auth-overlay');
+    if (!overlay || !overlay.classList.contains('show')) return;
+
+    const target = document.getElementById(step === 'otp' ? 'auth-otp-input' : 'auth-phone-input');
+    if (target) setTimeout(() => target.focus(), 60);
+  }
+
+  function resetRecaptcha() {
+    if (recaptchaVerifier) {
+      try { recaptchaVerifier.clear(); } catch (e) { /* verifier already torn down */ }
+    }
+    recaptchaVerifier = null;
+    const container = document.getElementById('recaptcha-container');
+    if (container) container.innerHTML = '';
+  }
+
+  async function ensureRecaptcha() {
+    if (recaptchaVerifier) return recaptchaVerifier;
+    recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+      size: 'invisible',
+      callback: () => logBoot('[reCAPTCHA Solved]'),
+      'expired-callback': () => {
+        logBoot('[reCAPTCHA Expired]');
+        resetRecaptcha();
+      }
+    });
+    await recaptchaVerifier.render();
+    return recaptchaVerifier;
+  }
+
+  function stopOtpResendCountdown() {
+    if (otpResendInterval) clearInterval(otpResendInterval);
+    otpResendInterval = null;
+    otpResendSeconds = 0;
+  }
+
+  function renderOtpResendButton() {
+    const btn = document.getElementById('auth-resend-btn');
+    if (!btn) return;
+    if (otpResendSeconds > 0) {
+      btn.disabled = true;
+      btn.textContent = `Resend OTP in ${otpResendSeconds}s`;
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'Resend OTP';
+    }
+  }
+
+  function startOtpResendCountdown() {
+    stopOtpResendCountdown();
+    otpResendSeconds = OTP_RESEND_SECONDS;
+    renderOtpResendButton();
+    otpResendInterval = setInterval(() => {
+      otpResendSeconds -= 1;
+      if (otpResendSeconds <= 0) stopOtpResendCountdown();
+      renderOtpResendButton();
+    }, 1000);
+  }
+
+  function resetPhoneAuthUi() {
+    stopOtpResendCountdown();
+    phoneConfirmation = null;
+    pendingPhoneNumber = '';
+    resetRecaptcha();
+
+    const otpInput = document.getElementById('auth-otp-input');
+    if (otpInput) otpInput.value = '';
+    const phoneInput = document.getElementById('auth-phone-input');
+    if (phoneInput) phoneInput.value = '';
+
+    showAuthStep('phone');
+  }
+
+  function updateOtpTargetLabel() {
+    const el = document.getElementById('auth-otp-target');
+    if (el) el.textContent = pendingPhoneNumber || 'your phone';
+  }
+
+  async function requestOtp(phoneNumber, button, loadingLabel) {
+    const originalHtml = button ? button.innerHTML : '';
     authInFlight = true;
-    logBoot('[Sign-In Button Clicked]');
+    clearAuthError();
+    if (button) setSignInButtonLoading(button, originalHtml, loadingLabel);
 
-    // Only show button loading — NOT the full loading screen.
-    // The loading screen will be shown by handleAuthStateChange once Firebase
-    // confirms a real user, preventing the stuck-loading-screen bug when the
-    // user closes the popup without signing in.
-    if (signInBtn) {
-      setSignInButtonLoading(signInBtn, originalBtnText);
+    try {
+      const verifier = await ensureRecaptcha();
+      logBoot('[OTP Request Started]', phoneNumber);
+      phoneConfirmation = await signInWithPhoneNumber(auth, phoneNumber, verifier);
+      pendingPhoneNumber = phoneNumber;
+
+      authInFlight = false;
+      resetSignInButtonState();
+      updateOtpTargetLabel();
+      showAuthStep('otp');
+      startOtpResendCountdown();
+      showToast(`OTP sent to ${phoneNumber}`, 'success');
+      return true;
+    } catch (e) {
+      authInFlight = false;
+      resetSignInButtonState();
+      resetRecaptcha();
+      logAuthError('Send OTP failed', e);
+      setAuthError(describeAuthError(e));
+      return false;
+    }
+  }
+
+  async function sendOtp(event) {
+    if (event && typeof event.preventDefault === 'function') event.preventDefault();
+
+    if (!isFirebaseEnabled) {
+      showToast('Cloud sync is not configured.', 'error');
+      return;
+    }
+    if (authInFlight) {
+      logBoot('[OTP Request Ignored]', 'An auth request is already in progress.');
+      return;
     }
 
-    // Safety timeout: if popup auth hangs for 30s, auto-recover
+    const codeEl = document.getElementById('auth-country-code');
+    const phoneEl = document.getElementById('auth-phone-input');
+    const localDigits = phoneEl ? String(phoneEl.value).replace(/\D/g, '') : '';
+    const phoneNumber = normalizePhoneNumber(codeEl ? codeEl.value : '+91', localDigits);
+
+    if (localDigits.length < 6 || phoneNumber.replace(/\D/g, '').length > 15) {
+      setAuthError('Enter a valid phone number with its country code.');
+      if (phoneEl) phoneEl.focus();
+      return;
+    }
+
+    const button = document.getElementById('auth-send-otp-btn');
+    await requestOtp(phoneNumber, button, 'Sending OTP...');
+  }
+
+  async function resendOtp() {
+    if (!isFirebaseEnabled || authInFlight) return;
+    if (otpResendSeconds > 0) return;
+    if (!pendingPhoneNumber) {
+      showAuthStep('phone');
+      return;
+    }
+
+    // A fresh reCAPTCHA token is required for every SMS request.
+    resetRecaptcha();
+    const button = document.getElementById('auth-verify-btn');
+    await requestOtp(pendingPhoneNumber, button, 'Resending OTP...');
+  }
+
+  function changePhoneNumber() {
+    if (authInFlight) return;
+    stopOtpResendCountdown();
+    phoneConfirmation = null;
+    resetRecaptcha();
+
+    const otpInput = document.getElementById('auth-otp-input');
+    if (otpInput) otpInput.value = '';
+
+    showAuthStep('phone');
+  }
+
+  async function verifyOtp(event) {
+    if (event && typeof event.preventDefault === 'function') event.preventDefault();
+
+    if (!isFirebaseEnabled) {
+      showToast('Cloud sync is not configured.', 'error');
+      return;
+    }
+    if (authInFlight) return;
+
+    if (!phoneConfirmation) {
+      setAuthError('That code request expired. Please request a new OTP.');
+      showAuthStep('phone');
+      return;
+    }
+
+    const otpEl = document.getElementById('auth-otp-input');
+    const code = otpEl ? String(otpEl.value).replace(/\D/g, '') : '';
+    if (code.length !== 6) {
+      setAuthError('Enter the 6-digit code we sent you.');
+      if (otpEl) otpEl.focus();
+      return;
+    }
+
+    const button = document.getElementById('auth-verify-btn');
+    const originalHtml = button ? button.innerHTML : '';
+    authInFlight = true;
+    clearAuthError();
+    if (button) setSignInButtonLoading(button, originalHtml, 'Verifying...');
+
+    // Safety timeout: if verification hangs for 30s, auto-recover
     const authSafetyTimer = setTimeout(() => {
       if (authInFlight) {
-        logBoot('[Auth Safety Timeout]', 'Popup auth timed out after 30s. Recovering.');
+        logBoot('[Auth Safety Timeout]', 'OTP verification timed out after 30s. Recovering.');
         authInFlight = false;
         resetSignInButtonState();
         hideLoadingScreen();
@@ -708,47 +919,50 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
         setAppState('UNAUTHENTICATED');
       }
     }, 30000);
-    
-    logBoot('[Popup Started]');
-    signInWithPopup(auth, googleProvider)
-      .then((result) => {
-        clearTimeout(authSafetyTimer);
-        logBoot('[Firebase Credential Received]', result?.user?.uid || 'pending');
-        // Show loading screen NOW — user is confirmed, bootstrap will begin
-        showLoadingScreen();
-        showToast("Logged in with Google", "success");
-      })
-      .catch(e => {
-        clearTimeout(authSafetyTimer);
-        authInFlight = false;
-        resetSignInButtonState();
 
-        // Silently handle user-initiated popup dismissals — no error toast needed
-        const silentErrors = [
-          'auth/popup-closed-by-user',
-          'auth/cancelled-popup-request',
-          'auth/user-cancelled'
-        ];
-        if (silentErrors.includes(e?.code)) {
-          logBoot('[Popup Dismissed]', e.code);
-        } else {
-          logAuthError('Sign-in with popup failed', e);
-          const isUnauthorizedDomain = e?.code === 'auth/unauthorized-domain';
-          showToast(isUnauthorizedDomain
-            ? 'This app domain is not authorized in Firebase Authentication. Add it in the Firebase console.'
-            : "Sign-in failed: " + e.message, "error");
-        }
+    try {
+      const result = await phoneConfirmation.confirm(code);
+      clearTimeout(authSafetyTimer);
+      logBoot('[Firebase Credential Received]', (result && result.user && result.user.uid) || 'pending');
 
-        setAppState('UNAUTHENTICATED');
-        hideLoadingScreen();
-        const authOverlay = document.getElementById('auth-overlay');
-        if (authOverlay) authOverlay.classList.add('show');
-      });
+      stopOtpResendCountdown();
+      phoneConfirmation = null;
+
+      // Show loading screen NOW — user is confirmed, bootstrap will begin.
+      showLoadingScreen();
+      showToast('Signed in successfully', 'success');
+      // handleAuthStateChange takes over from here.
+    } catch (e) {
+      clearTimeout(authSafetyTimer);
+      authInFlight = false;
+      resetSignInButtonState();
+      logAuthError('OTP verification failed', e);
+      setAuthError(describeAuthError(e));
+
+      if (e && e.code === 'auth/code-expired') {
+        phoneConfirmation = null;
+        stopOtpResendCountdown();
+        renderOtpResendButton();
+      }
+
+      if (otpEl) {
+        otpEl.value = '';
+        otpEl.focus();
+      }
+    }
+  }
+
+  function showAuthOverlay() {
+    resetPhoneAuthUi();
+    const authOverlay = document.getElementById('auth-overlay');
+    if (authOverlay) authOverlay.classList.add('show');
   }
 
   function signOut() {
     if (!isFirebaseEnabled) return;
-    
+
+    resetPhoneAuthUi();
+
     // Clear purely in-memory state
     setAppState('UNAUTHENTICATED');
     state.missions = [];
@@ -760,7 +974,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       lastActiveDate: '', lastVictoryDate: '', lastVictoryTier: 0, achievements: [],
       stats: { strength: 0, intelligence: 0, wealth: 0, discipline: 0, social: 0 }
     };
-    
+
     firebaseSignOut(auth)
       .then(() => {
         // We do NOT clear localStorage here because it only contains UI preferences (theme, tab).
@@ -802,7 +1016,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   async function dbDeleteMission(missionId) {
     if (isFirebaseEnabled && auth.currentUser) {
       const userId = auth.currentUser.uid;
-      
+
       try {
         const batch = writeBatch(db);
         batch.delete(doc(db, 'users', userId, 'missions', missionId));
@@ -863,7 +1077,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   async function dbDeleteAttribute(attributeId) {
     if (isFirebaseEnabled && auth.currentUser) {
       const userId = auth.currentUser.uid;
-      
+
       try {
         const batch = writeBatch(db);
         batch.delete(doc(db, 'users', userId, 'attributes', attributeId));
@@ -919,7 +1133,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   async function dbDeleteAction(actionId) {
     if (isFirebaseEnabled && auth.currentUser) {
       const userId = auth.currentUser.uid;
-      
+
       try {
         const batch = writeBatch(db);
         batch.delete(doc(db, 'users', userId, 'actions', actionId));
@@ -964,7 +1178,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   async function dbResetAll() {
     if (isFirebaseEnabled && auth.currentUser) {
       const userId = auth.currentUser.uid;
-      
+
       try {
         const collections = ['missions', 'attributes', 'actions', 'completions'];
         for (const colName of collections) {
@@ -1323,7 +1537,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
     toast.className = `toast ${type}-toast`;
-    
+
     if (undoCallback && type !== 'xp') {
       const textSpan = document.createElement('span');
       textSpan.textContent = message;
@@ -1341,7 +1555,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     } else {
       toast.textContent = message;
     }
-    
+
     container.appendChild(toast);
     requestAnimationFrame(() => toast.classList.add('show'));
     setTimeout(() => {
@@ -1471,7 +1685,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     const completionPct = todayActions.length > 0
       ? Math.round((todayActions.filter(a => isCompletedToday(a.id)).length / todayActions.length) * 100)
       : 0;
-    
+
     // Today's Completion in top metrics grid
     document.getElementById('stat-completion').textContent = completionPct + '%';
 
@@ -1479,11 +1693,11 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     const monthlyPct = getMonthlyCompletionPercent();
     const targetStatusEl = document.getElementById('dashboard-target-status');
     const targetCurrentEl = document.getElementById('dashboard-target-current');
-    
+
     if (targetCurrentEl) {
       targetCurrentEl.textContent = monthlyPct + '%';
     }
-    
+
     if (targetStatusEl) {
       if (monthlyPct >= 80) {
         targetStatusEl.textContent = 'On Track ✅';
@@ -1791,11 +2005,11 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     const progressTargetCurrentEl = document.getElementById('progress-target-current');
     const progressTargetGapEl = document.getElementById('progress-target-gap');
     const progressTargetIndicatorEl = document.getElementById('progress-target-indicator');
-    
+
     if (progressTargetCurrentEl) {
       progressTargetCurrentEl.textContent = monthlyPct + '%';
     }
-    
+
     if (progressTargetGapEl) {
       if (gap >= 0) {
         progressTargetGapEl.textContent = `+${gap}%`;
@@ -1805,7 +2019,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
         progressTargetGapEl.className = 'progress-target-gap below';
       }
     }
-    
+
     if (progressTargetIndicatorEl) {
       if (monthlyPct >= 80) {
         progressTargetIndicatorEl.textContent = 'Stay Above 80% — You\'re On Track';
@@ -1917,7 +2131,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     const user = auth ? auth.currentUser : null;
     const loggedOutEl = document.getElementById('cloud-logged-out');
     const loggedInEl = document.getElementById('cloud-logged-in');
-    
+
     // Always render / force visibility of account card and section header
     if (cloudSyncCard) {
       cloudSyncCard.style.display = '';
@@ -1934,14 +2148,12 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     if (user) {
       if (loggedOutEl) loggedOutEl.style.display = 'none';
       if (loggedInEl) loggedInEl.style.display = '';
-      
-      const avatarEl = document.getElementById('cloud-user-avatar');
+
       const nameEl = document.getElementById('cloud-user-name');
-      const emailEl = document.getElementById('cloud-user-email');
-      
-      if (avatarEl) avatarEl.src = user.photoURL || '';
-      if (nameEl) nameEl.textContent = user.displayName || 'Hero';
-      if (emailEl) emailEl.textContent = user.email || '';
+      const phoneEl = document.getElementById('cloud-user-phone');
+
+      if (nameEl) nameEl.textContent = state.profile.charName || 'Hero';
+      if (phoneEl) phoneEl.textContent = user.phoneNumber || 'Signed in';
     } else {
       if (loggedOutEl) loggedOutEl.style.display = '';
       if (loggedInEl) loggedInEl.style.display = 'none';
@@ -2079,12 +2291,12 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       rebuildStatsFromCompletions();
       recalculateStreak();
     }
-    
+
     dbDeleteMission(missionId);
     currentMissionId = null;
     closeModal();
     showToast('Mission deleted', 'default');
-    
+
     // Force transition back to missions list
     currentTab = null;
     switchTab('missions');
@@ -2198,7 +2410,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       state.attributes = state.attributes.filter(a => a.id !== attributeId);
       rebuildStatsFromCompletions();
     }
-    
+
     dbDeleteAttribute(attributeId);
     closeModal();
     showToast('Attribute deleted', 'default');
@@ -2250,7 +2462,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
 
     const statsList = ['strength', 'intelligence', 'wealth', 'discipline', 'social'];
     const actionStats = action && action.stats ? action.stats : ['discipline'];
-    
+
     const statsSelectorHtml = statsList.map(s => {
       const active = actionStats.includes(s) ? 'active' : '';
       const iconMap = { strength: '💪', intelligence: '🧠', wealth: '💰', discipline: '🛡️', social: '🌍' };
@@ -2263,13 +2475,13 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
 
     const missionAttrs = state.attributes.filter(attr => attr.missionId === missionId);
     let categorySelectHtml = '';
-    
+
     if (missionAttrs.length > 0) {
       const optionsHtml = [
         `<option value="">None (Directly under Mission)</option>`,
         ...missionAttrs.map(attr => `<option value="${attr.id}" ${attr.id === attributeId ? 'selected' : ''}>${escapeHtml(attr.name)}</option>`)
       ].join('');
-      
+
       categorySelectHtml = `
         <div class="form-group">
           <label class="form-label">Category</label>
@@ -2396,7 +2608,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       state.actions = state.actions.filter(a => a.id !== actionId);
       rebuildStatsFromCompletions();
     }
-    
+
     dbDeleteAction(actionId);
     closeModal();
     showToast('Action deleted', 'default');
@@ -2421,11 +2633,11 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     if (existing) {
       // Uncomplete — remove completion
       dbDeleteCompletion(existing.id, actionId);
-      
+
       if (isFirebaseEnabled && auth.currentUser) {
         state.completions = state.completions.filter(c => c.id !== existing.id);
       }
-      
+
       rebuildStatsFromCompletions();
       recalculateStreak();
       saveProfile(state.profile);
@@ -2449,7 +2661,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       if (isFirebaseEnabled && auth.currentUser) {
         state.completions.push(comp);
       }
-      
+
       rebuildStatsFromCompletions();
       state.profile.lastActiveDate = today;
       recalculateStreak();
@@ -2517,11 +2729,11 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     onboardingStep = 1;
     selectedArchetypeType = null;
     document.getElementById('onboarding-name-input').value = '';
-    
+
     document.getElementById('onboarding-step-1').style.display = 'block';
     document.getElementById('onboarding-step-2').style.display = 'none';
     document.getElementById('onboarding-step-3').style.display = 'none';
-    
+
     document.querySelectorAll('.archetype-card').forEach(c => c.classList.remove('active'));
     document.getElementById('onboarding-overlay').classList.add('show');
     refreshIcons();
@@ -2533,7 +2745,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       showToast('Please enter your character name', 'error');
       return;
     }
-    
+
     onboardingStep = 2;
     const step1 = document.getElementById('onboarding-step-1');
     const step2 = document.getElementById('onboarding-step-2');
@@ -2566,10 +2778,10 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       showToast('Please select at least one archetype', 'error');
       return;
     }
-    
+
     const selectedArchetypes = Array.from(activeCards).map(card => card.id.replace('archetype-', ''));
     const name = document.getElementById('onboarding-name-input').value.trim();
-    
+
     const newProfile = {
       charName: name,
       archetype: selectedArchetypes.map(a => a.charAt(0).toUpperCase() + a.slice(1)).join(', '),
@@ -2582,7 +2794,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       achievements: [],
       stats: { strength: 0, intelligence: 0, wealth: 0, discipline: 0, social: 0 }
     };
-    
+
     if (isFirebaseEnabled && auth.currentUser) {
       state.profile = newProfile;
       generateArchetypesStarterData(selectedArchetypes);
@@ -2597,7 +2809,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       rebuildStatsFromCompletions();
       saveAll();
     }
-    
+
     // Step 3: Welcome — animated transition
     const step2 = document.getElementById('onboarding-step-2');
     const step3 = document.getElementById('onboarding-step-3');
@@ -2616,14 +2828,14 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
 
   function dismissOnboarding() {
     document.getElementById('onboarding-overlay').classList.remove('show');
-    
+
     // Transition state from NEW_USER to READY
     setAppState('READY');
-    
+
     if (isFirebaseEnabled && auth.currentUser) {
       setupRealtimeListeners(auth.currentUser.uid);
     }
-    
+
     switchTab(currentTab);
     showToast('Your journey begins!', 'success');
   }
@@ -2799,7 +3011,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   function checkDailyVictory() {
     const todayActions = getTodayActions();
     if (todayActions.length === 0) return;
-    
+
     const completed = todayActions.filter(a => isCompletedToday(a.id)).length;
     const completionPct = Math.round((completed / todayActions.length) * 100);
     const today = getToday();
@@ -2827,11 +3039,11 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     const today = getToday();
     const todayCompletions = state.completions.filter(c => c.date === today);
     const xpGained = todayCompletions.reduce((sum, c) => sum + c.xpEarned, 0);
-    
+
     const titleEl = document.getElementById('victory-title-element');
     const msgEl = document.getElementById('victory-message-text');
     const iconEl = document.getElementById('victory-icon-element');
-    
+
     // Set victory tier classes for dynamic styling overrides
     const overlay = document.getElementById('daily-victory-overlay');
     const content = overlay ? overlay.querySelector('.victory-content') : null;
@@ -2845,7 +3057,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
         content.classList.add('victory-tier-success');
       }
     }
-    
+
     if (tier === 3) {
       if (titleEl) titleEl.textContent = 'PERFECT DAY! ⭐';
       if (msgEl) msgEl.textContent = '100% Completed — Small Wins Compound';
@@ -2862,7 +3074,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
 
     document.getElementById('victory-xp-earned').textContent = `+${xpGained}`;
     document.getElementById('victory-streak').textContent = state.profile.currentStreak;
-    
+
     document.getElementById('daily-victory-overlay').classList.add('show'); refreshIcons();
   }
 
@@ -3083,7 +3295,11 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   // ---------------------------------------------------------------------------
   return {
     init,
-    signInWithGoogle,
+    sendOtp,
+    verifyOtp,
+    resendOtp,
+    changePhoneNumber,
+    showAuthOverlay,
     signOut,
     switchTab,
     showCreateMission,

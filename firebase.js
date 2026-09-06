@@ -1,10 +1,8 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
 import { 
   getAuth, 
-  signInWithPopup, 
-  signInWithRedirect,
-  getRedirectResult,
-  GoogleAuthProvider, 
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
   signOut, 
   onAuthStateChanged 
 } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
@@ -28,14 +26,6 @@ import {
 // FIREBASE CONFIGURATION
 // Paste your Firebase Config below:
 // ============================================================================
-const resolveAuthDomain = () => {
-  const hostname = window.location?.hostname || 'localhost';
-  if (!hostname || hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]') {
-    return 'localhost';
-  }
-  return hostname;
-};
-
 const firebaseConfig = {
   apiKey: "AIzaSyBh_NK7DsvbvR4xgoHaDqYUSOhk1vIndr8",
   authDomain: "project-human-c05be.firebaseapp.com",
@@ -57,7 +47,10 @@ if (firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("YOUR_")) {
   try {
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
-    
+
+    // Phone auth SMS + reCAPTCHA follow the device language
+    auth.useDeviceLanguage();
+
     // Initialize Firestore with multi-tab offline persistence
     db = initializeFirestore(app, {
       localCache: persistentLocalCache({
@@ -74,16 +67,12 @@ if (firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("YOUR_")) {
   console.warn("Firebase credentials not configured. Running in Local Fallback Mode.");
 }
 
-const googleProvider = new GoogleAuthProvider();
-
 export {
   auth,
   db,
   isFirebaseEnabled,
-  googleProvider,
-  signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
   signOut,
   onAuthStateChanged,
   collection,
