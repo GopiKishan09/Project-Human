@@ -16,7 +16,7 @@ import {
   getDocs,
   onSnapshot,
   writeBatch
-} from './firebase.js?v=1.9.1';
+} from './firebase.js?v=1.9.2';
 
 const App = (() => {
   'use strict';
@@ -77,12 +77,24 @@ const App = (() => {
     return emojiToLucide[iconStr] || 'star';
   }
 
+  let iconRetryQueued = false;
+
   function refreshIcons() {
     if (window.lucide) {
       requestAnimationFrame(() => {
         window.lucide.createIcons();
       });
+      return;
     }
+    // The lucide bundle is deferred and comes off a CDN, so it can still be
+    // in flight on a slow connection. Retry once it lands, otherwise the
+    // pre-login screens (which never re-render) stay icon-less.
+    if (iconRetryQueued) return;
+    iconRetryQueued = true;
+    window.addEventListener('load', () => {
+      iconRetryQueued = false;
+      refreshIcons();
+    }, { once: true });
   }
 
 
@@ -1600,11 +1612,18 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     const content = document.getElementById('modal-content');
     content.innerHTML = html;
     overlay.classList.add('show');
+    document.body.classList.add('modal-open');
+    refreshIcons();
+
+    // Focus the first real field so the keyboard opens straight onto it.
+    const firstField = content.querySelector('input:not([type="hidden"]), textarea, select');
+    if (firstField) setTimeout(() => firstField.focus(), 120);
   }
 
   function closeModal() {
     const overlay = document.getElementById('modal-overlay');
     overlay.classList.remove('show');
+    document.body.classList.remove('modal-open');
     // Content resets after transition ends
     setTimeout(() => {
       const content = document.getElementById('modal-content');
@@ -1872,7 +1891,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     currentMissionId = missionId;
 
     // Title
-    document.getElementById('mission-detail-title').innerHTML = `<i data-lucide="${getLucide(mission.icon)}" style="margin-right:8px;"></i> ${mission.name}`;
+    document.getElementById('mission-detail-title').innerHTML = `<i data-lucide="${getLucide(mission.icon)}" style="margin-right:8px;"></i> ${escapeHtml(mission.name)}`;
 
     // Progress
     const mActions = state.actions.filter(a => a.missionId === missionId);
@@ -2112,7 +2131,13 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     // Profile Details
     document.getElementById('profile-char-name').textContent = state.profile.charName || 'Character Name';
     const archetypeLabel = (state.profile.archetype || 'Scholar').charAt(0).toUpperCase() + (state.profile.archetype || 'Scholar').slice(1);
-    document.getElementById('profile-char-subtitle').textContent = `${getRank(levelInfo.level)} • ${archetypeLabel}`;
+    const rankLabel = getRank(levelInfo.level);
+    // Ranks and archetypes share names (a level-11 Warrior), so collapse the
+    // duplicate rather than printing "Warrior • Warrior".
+    document.getElementById('profile-char-subtitle').textContent =
+      rankLabel.toLowerCase() === archetypeLabel.toLowerCase()
+        ? rankLabel
+        : `${rankLabel} • ${archetypeLabel}`;
 
     // Render Stats Progress List on Profile
     renderStatItem('profile', 'strength', state.profile.stats.strength || 0);
@@ -2480,7 +2505,8 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
 
     const diffOptions = ['easy', 'medium', 'hard', 'legendary'].map(d =>
       `<button type="button" class="diff-option ${d} ${d === selectedDifficulty ? 'active' : ''}" data-diff="${d}" onclick="App.selectDifficulty('${d}')">
-        <span>${d.charAt(0).toUpperCase() + d.slice(1)}</span><small>${XP_MAP[d]} XP</small>
+        <span>${d.charAt(0).toUpperCase() + d.slice(1)}</span>
+        <small>${XP_MAP[d]} XP</small>
       </button>`
     ).join('');
 
@@ -2493,10 +2519,10 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
 
     const statsSelectorHtml = statsList.map(s => {
       const active = actionStats.includes(s) ? 'active' : '';
-      const iconMap = { strength: '💪', intelligence: '🧠', wealth: '💰', discipline: '🛡️', social: '🌍' };
+      const iconMap = { strength: 'dumbbell', intelligence: 'brain', wealth: 'coins', discipline: 'shield', social: 'users' };
       const labelMap = { strength: 'Strength', intelligence: 'Intelligence', wealth: 'Wealth', discipline: 'Discipline', social: 'Social' };
       return `<button type="button" class="stat-pill-btn ${s} ${active}" data-stat="${s}" onclick="App.toggleFormStat(this, '${s}')">
-        <span>${iconMap[s]}</span>
+        <i data-lucide="${iconMap[s]}" aria-hidden="true"></i>
         <span>${labelMap[s]}</span>
       </button>`;
     }).join('');
@@ -3295,6 +3321,10 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     logBoot('[BOOT Started]');
     loadAll();
 
+    // The sign-in screen, bottom nav and empty states are static markup that
+    // no render pass touches, so their icons need an explicit first pass.
+    refreshIcons();
+
     setAppState('AUTH_LOADING');
     updateAppShellVisibility();
     const loadingScreen = document.getElementById('app-loading-screen');
@@ -3303,6 +3333,13 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     // Register online/offline event listeners
     window.addEventListener('online', updateConnectivityStatus);
     window.addEventListener('offline', updateConnectivityStatus);
+
+    // Escape closes whichever sheet is on top
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      const modal = document.getElementById('modal-overlay');
+      if (modal && modal.classList.contains('show')) closeModal();
+    });
     updateConnectivityStatus();
 
     initFirebase();

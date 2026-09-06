@@ -19,12 +19,17 @@
   <meta name="twitter:description" content="A real-life RPG progression system. Complete actions, earn XP, level up your life.">
 
   <title>Project Human — Build Your Character</title>
-  <link rel="manifest" href="manifest.json?v=1.8.0">
+  <link rel="manifest" href="manifest.json?v=1.9.2">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta property="og:image" content="https://project-human.netlify.app/icons/icon-512.png">
+  <meta name="twitter:image" content="https://project-human.netlify.app/icons/icon-512.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="index.css?v=1.9.1">
+  <link rel="stylesheet" href="index.css?v=1.9.2">
   
   <!-- Loading Screen Styles (inline for instant render) -->
   <style>
@@ -46,11 +51,19 @@
       display: none !important;
     }
     .app-loading-icon {
-      font-size: 52px;
-      color: #818cf8;
-      filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.4));
-      animation: loadingPulse 2s ease-in-out infinite;
-      margin-bottom: 24px;
+      margin-bottom: 26px;
+      filter: drop-shadow(0 12px 32px rgba(147, 51, 234, 0.35));
+      animation: loadingPulse 2.4s ease-in-out infinite;
+    }
+    .app-loading-icon .ph-mark { display: block; }
+    /* The ring winds itself up while the app boots */
+    .ph-ring-charge {
+      animation: ringCharge 1.8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+    }
+    @keyframes ringCharge {
+      0%   { stroke-dashoffset: 1005; opacity: 0.55; }
+      55%  { stroke-dashoffset: 190;  opacity: 1; }
+      100% { stroke-dashoffset: 1005; opacity: 0.55; }
     }
     .app-loading-title {
       color: #f0f0f5;
@@ -71,14 +84,17 @@
     .app-loading-spinner {
       width: 24px;
       height: 24px;
-      border: 2.5px solid rgba(99, 102, 241, 0.12);
-      border-top-color: #818cf8;
+      border: 2.5px solid rgba(168, 85, 247, 0.14);
+      border-top-color: #A855F7;
       border-radius: 50%;
       animation: loadingSpin 0.7s linear infinite;
     }
+    @media (prefers-reduced-motion: reduce) {
+      .app-loading-icon, .ph-ring-charge, .app-loading-spinner { animation: none; }
+    }
     @keyframes loadingPulse {
-      0%, 100% { opacity: 0.5; transform: scale(1); filter: drop-shadow(0 0 16px rgba(99, 102, 241, 0.3)); }
-      50% { opacity: 1; transform: scale(1.08); filter: drop-shadow(0 0 28px rgba(99, 102, 241, 0.55)); }
+      0%, 100% { transform: scale(1);    filter: drop-shadow(0 10px 26px rgba(147, 51, 234, 0.30)); }
+      50%      { transform: scale(1.04); filter: drop-shadow(0 14px 38px rgba(147, 51, 234, 0.50)); }
     }
     @keyframes loadingSpin {
       to { transform: rotate(360deg); }
@@ -91,16 +107,50 @@
 
   <!-- App Loading Screen -->
   <div id="app-loading-screen" class="app-loading-screen">
-    <div class="app-loading-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+    <div class="app-loading-icon">
+        <svg class="ph-mark" width="92" height="92" viewBox="0 0 512 512" aria-hidden="true">
+          <defs>
+            <linearGradient id="splashBg" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#2A1055"/><stop offset="100%" stop-color="#0B0A12"/>
+            </linearGradient>
+            <linearGradient id="splashRing" x1="0" y1="1" x2="1" y2="0">
+              <stop offset="0%" stop-color="#A855F7"/><stop offset="100%" stop-color="#FBBF24"/>
+            </linearGradient>
+          </defs>
+          <rect width="512" height="512" rx="115" fill="url(#splashBg)"/>
+          <circle cx="256" cy="256" r="160" fill="none" stroke="#ffffff" stroke-opacity="0.08" stroke-width="34"/>
+          <circle class="ph-ring-charge" cx="256" cy="256" r="160" fill="none" stroke="url(#splashRing)" stroke-width="34"
+                  stroke-linecap="round" stroke-dasharray="1005" stroke-dashoffset="251" transform="rotate(-90 256 256)"/>
+          <circle cx="256" cy="176" r="30" fill="#ffffff"/>
+          <path d="M256 220 L322 330 H286 V366 H226 V330 H190 Z" fill="#ffffff"/>
+        </svg>
+      </div>
     <h1 class="app-loading-title">PROJECT HUMAN</h1>
     <p class="app-loading-subtitle">Build Your Character</p>
-    <div class="app-loading-bar-wrapper" style="width: 180px; height: 3px; background: rgba(255,255,255,0.06); border-radius: 9999px; overflow: hidden; margin-top: 28px;"><div style="width: 30%; height: 100%; background: linear-gradient(90deg, #6366f1, #a78bfa); border-radius: 9999px; animation: loadingSkeleton 1.8s infinite ease-in-out;"></div></div>
+    <div class="app-loading-bar-wrapper" style="width: 180px; height: 3px; background: rgba(255,255,255,0.06); border-radius: 9999px; overflow: hidden; margin-top: 28px;"><div style="width: 30%; height: 100%; background: linear-gradient(90deg, #7C3AED, #A855F7, #FBBF24); border-radius: 9999px; animation: loadingSkeleton 1.8s infinite ease-in-out;"></div></div>
   </div>
 
   <!-- Auth Overlay -->
   <div id="auth-overlay" class="auth-overlay">
     <div class="auth-content">
-      <div class="auth-logo"><i data-lucide="shield-check" style="width: 42px; height: 42px;"></i></div>
+      <div class="auth-logo">
+        <svg class="ph-mark" width="76" height="76" viewBox="0 0 512 512" aria-hidden="true">
+          <defs>
+            <linearGradient id="authBg" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#2A1055"/><stop offset="100%" stop-color="#0B0A12"/>
+            </linearGradient>
+            <linearGradient id="authRing" x1="0" y1="1" x2="1" y2="0">
+              <stop offset="0%" stop-color="#A855F7"/><stop offset="100%" stop-color="#FBBF24"/>
+            </linearGradient>
+          </defs>
+          <rect width="512" height="512" rx="115" fill="url(#authBg)"/>
+          <circle cx="256" cy="256" r="160" fill="none" stroke="#ffffff" stroke-opacity="0.08" stroke-width="34"/>
+          <circle class="" cx="256" cy="256" r="160" fill="none" stroke="url(#authRing)" stroke-width="34"
+                  stroke-linecap="round" stroke-dasharray="1005" stroke-dashoffset="251" transform="rotate(-90 256 256)"/>
+          <circle cx="256" cy="176" r="30" fill="#ffffff"/>
+          <path d="M256 220 L322 330 H286 V366 H226 V330 H190 Z" fill="#ffffff"/>
+        </svg>
+      </div>
       <h1 class="auth-title">PROJECT <span class="highlight">HUMAN</span></h1>
       <p class="auth-subtitle">Build Your Character. Level Up Your Life.</p>
       
@@ -395,7 +445,7 @@
 
         <div id="missions-list" class="missions-list"></div>
 
-        <div id="missions-empty" class="empty-state" style="display:none;" onclick="App.showCreateMission()">
+        <div id="missions-empty" class="empty-state" style="display:none;">
           <div class="empty-icon"><i data-lucide="rocket" style="width:48px;height:48px;"></i></div>
           <h3 class="empty-title">No Missions Yet</h3>
           <p class="empty-desc">Create your first mission to begin your journey.</p>
@@ -667,12 +717,20 @@
         </div>
         <div id="achievements-grid" class="achievements-grid"></div>
 
+        <div class="section-divider">
+          <h2 class="section-title">Data</h2>
+        </div>
+        <div class="settings-section" style="margin: 0 var(--spacing-md) var(--spacing-lg); display: flex; flex-direction: column; gap: var(--spacing-sm);">
+          <button class="btn btn-secondary btn-full" onclick="App.exportData()">Export My Data</button>
+          <button class="btn btn-danger-outline btn-full" onclick="App.confirmReset()">Reset All Data</button>
+        </div>
+
         <!-- Cloud Sync has been moved to the top of the Profile screen -->
 
 
 
         <div class="app-footer">
-          <p>Project Human v1.8.0</p>
+          <p>Project Human v1.9.2</p>
           <p>Build Your Character.</p>
         </div>
       </div>
@@ -705,6 +763,6 @@
     <div id="modal-content" class="modal-content" onclick="event.stopPropagation()"></div>
   </div>
 
-  <script type="module" src="app.js?v=1.9.1"></script>
+  <script type="module" src="app.js?v=1.9.2"></script>
 </body>
 </html>

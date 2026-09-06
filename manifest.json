@@ -1,1 +1,59 @@
-{\r\n  \"name\": \"Project Human\",\r\n  \"short_name\": \"Project Human\",\r\n  \"description\": \"Build Your Character — Real-life RPG progression system\",\r\n  \"id\": \"/\",\r\n  \"start_url\": \"./index.html\",\r\n  \"scope\": \"./\",\r\n  \"display\": \"standalone\",\r\n  \"background_color\": \"#0a0a0f\",\r\n  \"theme_color\": \"#0a0a0f\",\r\n  \"orientation\": \"portrait\",\r\n  \"icons\": [\r\n    {\r\n      \"src\": \"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%230a0a0f' width='100' height='100' rx='20'/><text x='50' y='62' text-anchor='middle' font-size='50'>⚡</text></svg>\",\r\n      \"sizes\": \"any\",\r\n      \"type\": \"image/svg+xml\"\r\n    }\r\n  ]\r\n}\r\n
+{
+  "name": "Project Human",
+  "short_name": "Project Human",
+  "description": "Build Your Character — Real-life RPG progression system",
+  "id": "/",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0B0A12",
+  "theme_color": "#0B0A12",
+  "orientation": "portrait",
+  "categories": ["productivity", "lifestyle", "health"],
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Today",
+      "short_name": "Today",
+      "url": "./index.html?tab=today",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Missions",
+      "short_name": "Missions",
+      "url": "./index.html?tab=missions",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

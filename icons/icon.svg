@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Project Human">
+  <defs>
+    <linearGradient id="phBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2A1055"/>
+      <stop offset="100%" stop-color="#0B0A12"/>
+    </linearGradient>
+    <linearGradient id="phRing" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#A855F7"/>
+      <stop offset="100%" stop-color="#FBBF24"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="115" fill="url(#phBg)"/>
+  <circle cx="256" cy="256" r="160" fill="none" stroke="#ffffff" stroke-opacity="0.08" stroke-width="34"/>
+  <circle cx="256" cy="256" r="160" fill="none" stroke="url(#phRing)" stroke-width="34" stroke-linecap="round"
+          stroke-dasharray="1005" stroke-dashoffset="251" transform="rotate(-90 256 256)"/>
+  <circle cx="256" cy="176" r="30" fill="#ffffff"/>
+  <path d="M256 220 L322 330 H286 V366 H226 V330 H190 Z" fill="#ffffff"/>
+</svg>
