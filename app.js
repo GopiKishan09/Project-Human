@@ -16,7 +16,7 @@ import {
   getDocs,
   onSnapshot,
   writeBatch
-} from './firebase.js?v=1.9.0';
+} from './firebase.js?v=1.9.1';
 
 const App = (() => {
   'use strict';
@@ -145,6 +145,8 @@ const App = (() => {
 
   // Phone OTP auth state
   let recaptchaVerifier = null;
+  let recaptchaReadyPromise = null;
+  let recaptchaWidgetSeq = 0;
   let phoneConfirmation = null;
   let pendingPhoneNumber = '';
   let otpResendInterval = null;
@@ -730,22 +732,48 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       try { recaptchaVerifier.clear(); } catch (e) { /* verifier already torn down */ }
     }
     recaptchaVerifier = null;
-    const container = document.getElementById('recaptcha-container');
-    if (container) container.innerHTML = '';
+    recaptchaReadyPromise = null;
+
+    // grecaptcha refuses to render twice into the same node ("reCAPTCHA has
+    // already been rendered in this element") and clear() does not reliably
+    // release it, so drop the node entirely and build a fresh one next time.
+    const host = document.getElementById('recaptcha-container');
+    if (host) host.innerHTML = '';
   }
 
-  async function ensureRecaptcha() {
-    if (recaptchaVerifier) return recaptchaVerifier;
-    recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-      size: 'invisible',
-      callback: () => logBoot('[reCAPTCHA Solved]'),
-      'expired-callback': () => {
-        logBoot('[reCAPTCHA Expired]');
-        resetRecaptcha();
-      }
+  function ensureRecaptcha() {
+    // Cache the in-flight render so overlapping callers share one widget.
+    if (recaptchaReadyPromise) return recaptchaReadyPromise;
+
+    recaptchaReadyPromise = (async () => {
+      const host = document.getElementById('recaptcha-container');
+      if (!host) throw new Error('Sign-in is unavailable: reCAPTCHA container is missing.');
+
+      host.innerHTML = '';
+      recaptchaWidgetSeq += 1;
+      const mount = document.createElement('div');
+      mount.id = `recaptcha-widget-${recaptchaWidgetSeq}`;
+      host.appendChild(mount);
+
+      const verifier = new RecaptchaVerifier(auth, mount, {
+        size: 'invisible',
+        callback: () => logBoot('[reCAPTCHA Solved]'),
+        'expired-callback': () => {
+          logBoot('[reCAPTCHA Expired]');
+          resetRecaptcha();
+        }
+      });
+      await verifier.render();
+      recaptchaVerifier = verifier;
+      return verifier;
+    })().catch(e => {
+      // Never cache a failed bootstrap — the next attempt must start clean.
+      recaptchaVerifier = null;
+      recaptchaReadyPromise = null;
+      throw e;
     });
-    await recaptchaVerifier.render();
-    return recaptchaVerifier;
+
+    return recaptchaReadyPromise;
   }
 
   function stopOtpResendCountdown() {
