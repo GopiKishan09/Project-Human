@@ -2,8 +2,9 @@ import {
   auth,
   db,
   isFirebaseEnabled,
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   collection,
@@ -16,7 +17,7 @@ import {
   getDocs,
   onSnapshot,
   writeBatch
-} from './firebase.js?v=1.11.0';
+} from './firebase.js?v=1.12.0';
 
 const App = (() => {
   'use strict';
@@ -124,6 +125,7 @@ const App = (() => {
     completions: [],
     profile: {
       charName: '',
+      phone: '',
       archetype: '',
       totalXp: 0,
       currentStreak: 0,
@@ -155,14 +157,6 @@ const App = (() => {
   let authButtonTarget = null;
   let authButtonOriginalHtml = '';
 
-  // Phone OTP auth state
-  let recaptchaVerifier = null;
-  let recaptchaReadyPromise = null;
-  let recaptchaWidgetSeq = 0;
-  let phoneConfirmation = null;
-  let pendingPhoneNumber = '';
-  let otpResendInterval = null;
-  let otpResendSeconds = 0;
 
   const DEBUG_AUTH = false;
   let _internalAppState = 'BOOT';
@@ -396,6 +390,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       state.completions = [];
       state.profile = {
         charName: '',
+        phone: '',
         archetype: '',
         totalXp: 0,
         currentStreak: 0,
@@ -446,7 +441,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       if (authOverlay && authOverlay.classList.contains('show')) {
         authOverlay.classList.remove('show');
       }
-      resetPhoneAuthUi();
+      resetAuthUi();
 
       // Show loading screen NOW — user is real, bootstrap will load data
       showLoadingScreen();
@@ -470,7 +465,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       state.actions = [];
       state.completions = [];
       state.profile = {
-        charName: '', archetype: '', totalXp: 0, currentStreak: 0, longestStreak: 0,
+        charName: '', phone: '', archetype: '', totalXp: 0, currentStreak: 0, longestStreak: 0,
         lastActiveDate: '', lastVictoryDate: '', lastVictoryTier: 0, achievements: [],
         stats: { strength: 0, intelligence: 0, wealth: 0, discipline: 0, social: 0 }
       };
@@ -518,6 +513,11 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
         setAppState('NEW_USER');
 
         // If it doesn't exist at all, create default profile immediately
+        if (pendingSignupPhone) {
+          state.profile.phone = pendingSignupPhone;
+          pendingSignupPhone = '';
+        }
+
         if (!docSnap.exists()) {
           await (async () => {
   if (DEBUG_AUTH) console.log(`[${new Date().toISOString()}] FIRESTORE: Profile created`);
@@ -676,16 +676,16 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   }
 
   // ---------------------------------------------------------------------------
-  // Phone OTP Authentication
+  // Email + Password Authentication
   // ---------------------------------------------------------------------------
-  const OTP_RESEND_SECONDS = 30;
+  // Phone is collected at sign-up and kept on the Firestore profile. It is not
+  // a login identifier — Firebase's email/password provider only authenticates
+  // by email — so it is stored as profile data.
 
-  function normalizePhoneNumber(countryCode, rawNumber) {
-    const ccDigits = String(countryCode || '').replace(/\D/g, '');
-    const digits = String(rawNumber || '').replace(/\D/g, '');
-    if (!ccDigits || !digits) return '';
-    return `+${ccDigits}${digits}`;
-  }
+  let authMode = 'signin';
+  // Held between "create account" and the profile write that bootstrapUser
+  // does, since the phone has nowhere to live until that document exists.
+  let pendingSignupPhone = '';
 
   function setAuthError(message) {
     const el = document.getElementById('auth-error');
@@ -698,315 +698,229 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     setAuthError('');
   }
 
+  function setAuthNotice(message) {
+    const el = document.getElementById('auth-notice');
+    if (!el) return;
+    el.textContent = message || '';
+    el.style.display = message ? 'block' : 'none';
+  }
+
   function describeAuthError(error) {
     switch (error && error.code) {
-      case 'auth/invalid-phone-number':
-        return 'That phone number does not look valid. Check the country code and number.';
-      case 'auth/missing-phone-number':
-        return 'Enter your phone number to continue.';
-      case 'auth/invalid-verification-code':
-        return 'Incorrect OTP. Please check the code and try again.';
-      case 'auth/code-expired':
-        return 'This OTP has expired. Request a new one.';
+      case 'auth/invalid-email':
+        return 'That email address does not look valid.';
+      case 'auth/email-already-in-use':
+        return 'An account already exists for this email. Try signing in instead.';
+      case 'auth/weak-password':
+        return 'Passwords need at least 6 characters.';
+      case 'auth/missing-password':
+        return 'Enter your password to continue.';
+      // Firebase collapses "no such user" and "wrong password" into one code
+      // on purpose, so an attacker cannot probe which emails are registered.
+      case 'auth/invalid-credential':
+      case 'auth/wrong-password':
+      case 'auth/user-not-found':
+        return 'Email or password is incorrect.';
+      case 'auth/user-disabled':
+        return 'This account has been disabled.';
       case 'auth/too-many-requests':
-        return 'Too many attempts from this device. Please try again later.';
-      case 'auth/quota-exceeded':
-        return 'SMS limit reached for now. Please try again later.';
-      case 'auth/billing-not-enabled':
-        // Firebase only sends real SMS on the Blaze plan; the Spark plan is
-        // limited to the numbers listed under "Phone numbers for testing".
-        return 'SMS sign-in is not enabled on this Firebase project yet. Upgrade the project to the Blaze plan to send real OTPs.';
-      case 'auth/captcha-check-failed':
-      case 'auth/unauthorized-domain':
-        return 'This app domain is not authorized in Firebase Authentication. Add it in the Firebase console.';
-      case 'auth/operation-not-allowed':
-        return 'Phone sign-in is not enabled for this Firebase project.';
+        return 'Too many attempts from this device. Please try again in a few minutes.';
       case 'auth/network-request-failed':
         return 'Network error. Check your connection and try again.';
+      case 'auth/operation-not-allowed':
+        return 'Email sign-in is not enabled for this Firebase project yet.';
       default:
         return (error && error.message) ? error.message : 'Something went wrong. Please try again.';
     }
   }
 
-  function showAuthStep(step) {
-    const phoneStep = document.getElementById('auth-step-phone');
-    const otpStep = document.getElementById('auth-step-otp');
-    if (phoneStep) phoneStep.style.display = step === 'otp' ? 'none' : '';
-    if (otpStep) otpStep.style.display = step === 'otp' ? '' : 'none';
-    clearAuthError();
-
-    // Only pull focus while the sign-in overlay is actually on screen, so
-    // resetting state after login does not pop the keyboard on mobile.
-    const overlay = document.getElementById('auth-overlay');
-    if (!overlay || !overlay.classList.contains('show')) return;
-
-    const target = document.getElementById(step === 'otp' ? 'auth-otp-input' : 'auth-phone-input');
-    if (target) setTimeout(() => target.focus(), 60);
+  function isValidEmail(value) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
   }
 
-  function resetRecaptcha() {
-    if (recaptchaVerifier) {
-      try { recaptchaVerifier.clear(); } catch (e) { /* verifier already torn down */ }
-    }
-    recaptchaVerifier = null;
-    recaptchaReadyPromise = null;
-
-    // grecaptcha refuses to render twice into the same node ("reCAPTCHA has
-    // already been rendered in this element") and clear() does not reliably
-    // release it, so drop the node entirely and build a fresh one next time.
-    const host = document.getElementById('recaptcha-container');
-    if (host) host.innerHTML = '';
+  function normalizePhone(countryCode, rawNumber) {
+    const cc = String(countryCode || '').replace(/\D/g, '');
+    const digits = String(rawNumber || '').replace(/\D/g, '');
+    if (!cc || !digits) return '';
+    return `+${cc}${digits}`;
   }
 
-  function ensureRecaptcha() {
-    // Cache the in-flight render so overlapping callers share one widget.
-    if (recaptchaReadyPromise) return recaptchaReadyPromise;
+  /** Switches between the sign-in and create-account forms. */
+  function setAuthMode(mode) {
+    if (authInFlight) return;
+    authMode = mode === 'signup' ? 'signup' : 'signin';
 
-    recaptchaReadyPromise = (async () => {
-      const host = document.getElementById('recaptcha-container');
-      if (!host) throw new Error('Sign-in is unavailable: reCAPTCHA container is missing.');
+    const signinForm = document.getElementById('auth-form-signin');
+    const signupForm = document.getElementById('auth-form-signup');
+    if (signinForm) signinForm.style.display = authMode === 'signin' ? '' : 'none';
+    if (signupForm) signupForm.style.display = authMode === 'signup' ? '' : 'none';
 
-      host.innerHTML = '';
-      recaptchaWidgetSeq += 1;
-      const mount = document.createElement('div');
-      mount.id = `recaptcha-widget-${recaptchaWidgetSeq}`;
-      host.appendChild(mount);
-
-      const verifier = new RecaptchaVerifier(auth, mount, {
-        size: 'invisible',
-        callback: () => logBoot('[reCAPTCHA Solved]'),
-        'expired-callback': () => {
-          logBoot('[reCAPTCHA Expired]');
-          resetRecaptcha();
-        }
-      });
-      await verifier.render();
-      recaptchaVerifier = verifier;
-      return verifier;
-    })().catch(e => {
-      // Never cache a failed bootstrap — the next attempt must start clean.
-      recaptchaVerifier = null;
-      recaptchaReadyPromise = null;
-      throw e;
+    document.querySelectorAll('.auth-tab').forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.mode === authMode);
+      tab.setAttribute('aria-selected', tab.dataset.mode === authMode ? 'true' : 'false');
     });
 
-    return recaptchaReadyPromise;
+    clearAuthError();
+    setAuthNotice('');
+
+    const overlay = document.getElementById('auth-overlay');
+    if (!overlay || !overlay.classList.contains('show')) return;
+    const first = document.getElementById(authMode === 'signin' ? 'signin-email' : 'signup-email');
+    if (first) setTimeout(() => first.focus(), 60);
   }
 
-  function stopOtpResendCountdown() {
-    if (otpResendInterval) clearInterval(otpResendInterval);
-    otpResendInterval = null;
-    otpResendSeconds = 0;
+  function resetAuthUi() {
+    ['signin-email', 'signin-password', 'signup-email', 'signup-phone', 'signup-password']
+      .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    pendingSignupPhone = '';
+    setAuthMode('signin');
   }
 
-  function renderOtpResendButton() {
-    const btn = document.getElementById('auth-resend-btn');
-    if (!btn) return;
-    if (otpResendSeconds > 0) {
-      btn.disabled = true;
-      btn.textContent = `Resend OTP in ${otpResendSeconds}s`;
-    } else {
-      btn.disabled = false;
-      btn.textContent = 'Resend OTP';
+  async function signIn(event) {
+    if (event && typeof event.preventDefault === 'function') event.preventDefault();
+    if (!isFirebaseEnabled) { showToast('Cloud sync is not configured.', 'error'); return; }
+    if (authInFlight) return;
+
+    const email = (document.getElementById('signin-email').value || '').trim();
+    const password = document.getElementById('signin-password').value || '';
+
+    if (!isValidEmail(email)) {
+      setAuthError('Enter a valid email address.');
+      document.getElementById('signin-email').focus();
+      return;
     }
-  }
+    if (!password) {
+      setAuthError('Enter your password.');
+      document.getElementById('signin-password').focus();
+      return;
+    }
 
-  function startOtpResendCountdown() {
-    stopOtpResendCountdown();
-    otpResendSeconds = OTP_RESEND_SECONDS;
-    renderOtpResendButton();
-    otpResendInterval = setInterval(() => {
-      otpResendSeconds -= 1;
-      if (otpResendSeconds <= 0) stopOtpResendCountdown();
-      renderOtpResendButton();
-    }, 1000);
-  }
-
-  function resetPhoneAuthUi() {
-    stopOtpResendCountdown();
-    phoneConfirmation = null;
-    pendingPhoneNumber = '';
-    resetRecaptcha();
-
-    const otpInput = document.getElementById('auth-otp-input');
-    if (otpInput) otpInput.value = '';
-    const phoneInput = document.getElementById('auth-phone-input');
-    if (phoneInput) phoneInput.value = '';
-
-    showAuthStep('phone');
-  }
-
-  function updateOtpTargetLabel() {
-    const el = document.getElementById('auth-otp-target');
-    if (el) el.textContent = pendingPhoneNumber || 'your phone';
-  }
-
-  async function requestOtp(phoneNumber, button, loadingLabel) {
+    const button = document.getElementById('signin-submit');
     const originalHtml = button ? button.innerHTML : '';
     authInFlight = true;
     clearAuthError();
-    if (button) setSignInButtonLoading(button, originalHtml, loadingLabel);
+    setAuthNotice('');
+    if (button) setSignInButtonLoading(button, originalHtml, 'Signing in...');
 
-    try {
-      const verifier = await ensureRecaptcha();
-      logBoot('[OTP Request Started]', phoneNumber);
-      phoneConfirmation = await signInWithPhoneNumber(auth, phoneNumber, verifier);
-      pendingPhoneNumber = phoneNumber;
-
+    const safetyTimer = setTimeout(() => {
+      if (!authInFlight) return;
+      logBoot('[Auth Safety Timeout]', 'Sign-in timed out after 30s. Recovering.');
       authInFlight = false;
       resetSignInButtonState();
-      updateOtpTargetLabel();
-      showAuthStep('otp');
-      startOtpResendCountdown();
-      showToast(`OTP sent to ${phoneNumber}`, 'success');
-      return true;
-    } catch (e) {
-      authInFlight = false;
-      resetSignInButtonState();
-      resetRecaptcha();
-      logAuthError('Send OTP failed', e);
-      setAuthError(describeAuthError(e));
-      return false;
-    }
-  }
-
-  async function sendOtp(event) {
-    if (event && typeof event.preventDefault === 'function') event.preventDefault();
-
-    if (!isFirebaseEnabled) {
-      showToast('Cloud sync is not configured.', 'error');
-      return;
-    }
-    if (authInFlight) {
-      logBoot('[OTP Request Ignored]', 'An auth request is already in progress.');
-      return;
-    }
-
-    const codeEl = document.getElementById('auth-country-code');
-    const phoneEl = document.getElementById('auth-phone-input');
-    const localDigits = phoneEl ? String(phoneEl.value).replace(/\D/g, '') : '';
-    const phoneNumber = normalizePhoneNumber(codeEl ? codeEl.value : '+91', localDigits);
-
-    if (localDigits.length < 6 || phoneNumber.replace(/\D/g, '').length > 15) {
-      setAuthError('Enter a valid phone number with its country code.');
-      if (phoneEl) phoneEl.focus();
-      return;
-    }
-
-    const button = document.getElementById('auth-send-otp-btn');
-    await requestOtp(phoneNumber, button, 'Sending OTP...');
-  }
-
-  async function resendOtp() {
-    if (!isFirebaseEnabled || authInFlight) return;
-    if (otpResendSeconds > 0) return;
-    if (!pendingPhoneNumber) {
-      showAuthStep('phone');
-      return;
-    }
-
-    // A fresh reCAPTCHA token is required for every SMS request.
-    resetRecaptcha();
-    const button = document.getElementById('auth-verify-btn');
-    await requestOtp(pendingPhoneNumber, button, 'Resending OTP...');
-  }
-
-  function changePhoneNumber() {
-    if (authInFlight) return;
-    stopOtpResendCountdown();
-    phoneConfirmation = null;
-    resetRecaptcha();
-
-    const otpInput = document.getElementById('auth-otp-input');
-    if (otpInput) otpInput.value = '';
-
-    showAuthStep('phone');
-  }
-
-  async function verifyOtp(event) {
-    if (event && typeof event.preventDefault === 'function') event.preventDefault();
-
-    if (!isFirebaseEnabled) {
-      showToast('Cloud sync is not configured.', 'error');
-      return;
-    }
-    if (authInFlight) return;
-
-    if (!phoneConfirmation) {
-      setAuthError('That code request expired. Please request a new OTP.');
-      showAuthStep('phone');
-      return;
-    }
-
-    const otpEl = document.getElementById('auth-otp-input');
-    const code = otpEl ? String(otpEl.value).replace(/\D/g, '') : '';
-    if (code.length !== 6) {
-      setAuthError('Enter the 6-digit code we sent you.');
-      if (otpEl) otpEl.focus();
-      return;
-    }
-
-    const button = document.getElementById('auth-verify-btn');
-    const originalHtml = button ? button.innerHTML : '';
-    authInFlight = true;
-    clearAuthError();
-    if (button) setSignInButtonLoading(button, originalHtml, 'Verifying...');
-
-    // Safety timeout: if verification hangs for 30s, auto-recover
-    const authSafetyTimer = setTimeout(() => {
-      if (authInFlight) {
-        logBoot('[Auth Safety Timeout]', 'OTP verification timed out after 30s. Recovering.');
-        authInFlight = false;
-        resetSignInButtonState();
-        hideLoadingScreen();
-        const authOverlay = document.getElementById('auth-overlay');
-        if (authOverlay) authOverlay.classList.add('show');
-        setAppState('UNAUTHENTICATED');
-      }
+      hideLoadingScreen();
+      const overlay = document.getElementById('auth-overlay');
+      if (overlay) overlay.classList.add('show');
+      setAppState('UNAUTHENTICATED');
     }, 30000);
 
     try {
-      const result = await phoneConfirmation.confirm(code);
-      clearTimeout(authSafetyTimer);
-      logBoot('[Firebase Credential Received]', (result && result.user && result.user.uid) || 'pending');
-
-      stopOtpResendCountdown();
-      phoneConfirmation = null;
-
-      // Show loading screen NOW — user is confirmed, bootstrap will begin.
+      await signInWithEmailAndPassword(auth, email, password);
+      clearTimeout(safetyTimer);
       showLoadingScreen();
-      showToast('Signed in successfully', 'success');
       // handleAuthStateChange takes over from here.
     } catch (e) {
-      clearTimeout(authSafetyTimer);
+      clearTimeout(safetyTimer);
       authInFlight = false;
       resetSignInButtonState();
-      logAuthError('OTP verification failed', e);
+      logAuthError('Sign-in failed', e);
       setAuthError(describeAuthError(e));
+    }
+  }
 
-      if (e && e.code === 'auth/code-expired') {
-        phoneConfirmation = null;
-        stopOtpResendCountdown();
-        renderOtpResendButton();
-      }
+  async function signUp(event) {
+    if (event && typeof event.preventDefault === 'function') event.preventDefault();
+    if (!isFirebaseEnabled) { showToast('Cloud sync is not configured.', 'error'); return; }
+    if (authInFlight) return;
 
-      if (otpEl) {
-        otpEl.value = '';
-        otpEl.focus();
-      }
+    const email = (document.getElementById('signup-email').value || '').trim();
+    const password = document.getElementById('signup-password').value || '';
+    const codeEl = document.getElementById('signup-country-code');
+    const phoneEl = document.getElementById('signup-phone');
+    const localDigits = (phoneEl.value || '').replace(/\D/g, '');
+    const phone = normalizePhone(codeEl ? codeEl.value : '+91', localDigits);
+
+    if (!isValidEmail(email)) {
+      setAuthError('Enter a valid email address.');
+      document.getElementById('signup-email').focus();
+      return;
+    }
+    if (localDigits.length < 6 || phone.replace(/\D/g, '').length > 15) {
+      setAuthError('Enter a valid mobile number with its country code.');
+      phoneEl.focus();
+      return;
+    }
+    if (password.length < 6) {
+      setAuthError('Choose a password with at least 6 characters.');
+      document.getElementById('signup-password').focus();
+      return;
+    }
+
+    const button = document.getElementById('signup-submit');
+    const originalHtml = button ? button.innerHTML : '';
+    authInFlight = true;
+    clearAuthError();
+    if (button) setSignInButtonLoading(button, originalHtml, 'Creating account...');
+
+    const safetyTimer = setTimeout(() => {
+      if (!authInFlight) return;
+      logBoot('[Auth Safety Timeout]', 'Sign-up timed out after 30s. Recovering.');
+      authInFlight = false;
+      resetSignInButtonState();
+      hideLoadingScreen();
+      const overlay = document.getElementById('auth-overlay');
+      if (overlay) overlay.classList.add('show');
+      setAppState('UNAUTHENTICATED');
+    }, 30000);
+
+    try {
+      // Stash it before the account exists: onAuthStateChanged fires straight
+      // after this resolves, and bootstrapUser writes the first profile.
+      pendingSignupPhone = phone;
+      await createUserWithEmailAndPassword(auth, email, password);
+      clearTimeout(safetyTimer);
+      showLoadingScreen();
+      // handleAuthStateChange takes over from here.
+    } catch (e) {
+      clearTimeout(safetyTimer);
+      pendingSignupPhone = '';
+      authInFlight = false;
+      resetSignInButtonState();
+      logAuthError('Sign-up failed', e);
+      setAuthError(describeAuthError(e));
+    }
+  }
+
+  async function resetPassword() {
+    if (!isFirebaseEnabled || authInFlight) return;
+
+    const email = (document.getElementById('signin-email').value || '').trim();
+    if (!isValidEmail(email)) {
+      setAuthError('Enter your email above first, then tap Forgot password.');
+      document.getElementById('signin-email').focus();
+      return;
+    }
+
+    clearAuthError();
+    try {
+      await sendPasswordResetEmail(auth, email);
+      // Deliberately not confirming whether the address is registered.
+      setAuthNotice(`If ${email} has an account, a reset link is on its way.`);
+    } catch (e) {
+      logAuthError('Password reset failed', e);
+      setAuthError(describeAuthError(e));
     }
   }
 
   function showAuthOverlay() {
-    resetPhoneAuthUi();
-    const authOverlay = document.getElementById('auth-overlay');
-    if (authOverlay) authOverlay.classList.add('show');
+    resetAuthUi();
+    const overlay = document.getElementById('auth-overlay');
+    if (overlay) overlay.classList.add('show');
   }
 
   function signOut() {
     if (!isFirebaseEnabled) return;
 
-    resetPhoneAuthUi();
+    resetAuthUi();
 
     // Clear purely in-memory state
     setAppState('UNAUTHENTICATED');
@@ -1015,7 +929,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     state.actions = [];
     state.completions = [];
     state.profile = {
-      charName: '', archetype: '', totalXp: 0, currentStreak: 0, longestStreak: 0,
+      charName: '', phone: '', archetype: '', totalXp: 0, currentStreak: 0, longestStreak: 0,
       lastActiveDate: '', lastVictoryDate: '', lastVictoryTier: 0, achievements: [],
       stats: { strength: 0, intelligence: 0, wealth: 0, discipline: 0, social: 0 }
     };
@@ -2415,10 +2329,12 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       if (loggedInEl) loggedInEl.style.display = '';
 
       const nameEl = document.getElementById('cloud-user-name');
+      const emailEl = document.getElementById('cloud-user-email');
       const phoneEl = document.getElementById('cloud-user-phone');
 
       if (nameEl) nameEl.textContent = state.profile.charName || 'Hero';
-      if (phoneEl) phoneEl.textContent = user.phoneNumber || 'Signed in';
+      if (emailEl) emailEl.textContent = user.email || '';
+      if (phoneEl) phoneEl.textContent = state.profile.phone || '';
     } else {
       if (loggedOutEl) loggedOutEl.style.display = '';
       if (loggedInEl) loggedInEl.style.display = 'none';
@@ -3120,6 +3036,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
 
     const newProfile = {
       charName: name,
+      phone: state.profile.phone || '',
       archetype: selectedArchetypes.map(a => a.charAt(0).toUpperCase() + a.slice(1)).join(', '),
       totalXp: 0,
       currentStreak: 0,
@@ -3503,12 +3420,15 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
 
   function executeReset() {
     if (isFirebaseEnabled && auth.currentUser) {
+      // Reset clears progress, not the account, so the sign-up phone stays.
+      const keptPhone = state.profile.phone || '';
       state.missions = [];
       state.attributes = [];
       state.actions = [];
       state.completions = [];
       state.profile = {
         charName: '',
+        phone: keptPhone,
         archetype: '',
         totalXp: 0,
         currentStreak: 0,
@@ -3648,10 +3568,10 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   // ---------------------------------------------------------------------------
   return {
     init,
-    sendOtp,
-    verifyOtp,
-    resendOtp,
-    changePhoneNumber,
+    signIn,
+    signUp,
+    setAuthMode,
+    resetPassword,
     showAuthOverlay,
     signOut,
     requestReminderPermission,

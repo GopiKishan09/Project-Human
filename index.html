@@ -19,7 +19,7 @@
   <meta name="twitter:description" content="A real-life RPG progression system. Complete actions, earn XP, level up your life.">
 
   <title>Project Human — Build Your Character</title>
-  <link rel="manifest" href="manifest.json?v=1.11.0">
+  <link rel="manifest" href="manifest.json?v=1.12.0">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="index.css?v=1.11.0">
+  <link rel="stylesheet" href="index.css?v=1.12.0">
   
   <!-- Loading Screen Styles (inline for instant render) -->
   <style>
@@ -155,39 +155,56 @@
       <p class="auth-subtitle">Build Your Character. Level Up Your Life.</p>
       
       <div class="auth-actions">
-        <!-- Step 1: Phone number -->
-        <form id="auth-step-phone" class="auth-form" onsubmit="App.sendOtp(event)" novalidate>
-          <label class="auth-label" for="auth-phone-input">Mobile number</label>
+        <div class="auth-tabs" role="tablist">
+          <button class="auth-tab active" type="button" role="tab" aria-selected="true"
+                  data-mode="signin" onclick="App.setAuthMode('signin')">Sign in</button>
+          <button class="auth-tab" type="button" role="tab" aria-selected="false"
+                  data-mode="signup" onclick="App.setAuthMode('signup')">Create account</button>
+        </div>
+
+        <!-- Sign in -->
+        <form id="auth-form-signin" class="auth-form" onsubmit="App.signIn(event)" novalidate>
+          <label class="auth-label" for="signin-email">Email</label>
+          <input id="signin-email" class="auth-input" type="email" inputmode="email"
+                 autocomplete="email" placeholder="you@example.com" autocapitalize="none" spellcheck="false">
+
+          <label class="auth-label" for="signin-password">Password</label>
+          <input id="signin-password" class="auth-input" type="password"
+                 autocomplete="current-password" placeholder="Your password">
+
+          <button id="signin-submit" class="auth-btn-primary" type="submit">Sign in</button>
+          <div class="auth-otp-links">
+            <span></span>
+            <button class="auth-link-btn" type="button" onclick="App.resetPassword()">Forgot password?</button>
+          </div>
+        </form>
+
+        <!-- Create account -->
+        <form id="auth-form-signup" class="auth-form" style="display: none;" onsubmit="App.signUp(event)" novalidate>
+          <label class="auth-label" for="signup-email">Email</label>
+          <input id="signup-email" class="auth-input" type="email" inputmode="email"
+                 autocomplete="email" placeholder="you@example.com" autocapitalize="none" spellcheck="false">
+
+          <label class="auth-label" for="signup-phone">Mobile number</label>
           <div class="auth-phone-row">
-            <input id="auth-country-code" class="auth-country-code" type="tel" inputmode="tel"
+            <input id="signup-country-code" class="auth-country-code" type="tel" inputmode="tel"
                    value="+91" maxlength="5" aria-label="Country code"
                    oninput="this.value = '+' + this.value.replace(/\D/g, '').slice(0, 3)">
-            <input id="auth-phone-input" class="auth-phone-input" type="tel" inputmode="numeric"
+            <input id="signup-phone" class="auth-phone-input" type="tel" inputmode="numeric"
                    autocomplete="tel-national" placeholder="98765 43210" maxlength="12"
                    aria-label="Mobile number"
                    oninput="this.value = this.value.replace(/\D/g, '')">
           </div>
-          <button id="auth-send-otp-btn" class="auth-btn-primary" type="submit">Send OTP</button>
-        </form>
 
-        <!-- Step 2: OTP verification -->
-        <form id="auth-step-otp" class="auth-form" style="display: none;" onsubmit="App.verifyOtp(event)" novalidate>
-          <label class="auth-label" for="auth-otp-input">
-            Enter the 6-digit code sent to <span id="auth-otp-target">your phone</span>
-          </label>
-          <input id="auth-otp-input" class="auth-otp-input" type="tel" inputmode="numeric"
-                 autocomplete="one-time-code" placeholder="------" maxlength="6"
-                 aria-label="One-time password"
-                 oninput="this.value = this.value.replace(/\D/g, '')">
-          <button id="auth-verify-btn" class="auth-btn-primary" type="submit">Verify &amp; Continue</button>
-          <div class="auth-otp-links">
-            <button id="auth-resend-btn" class="auth-link-btn" type="button" onclick="App.resendOtp()">Resend OTP</button>
-            <button class="auth-link-btn" type="button" onclick="App.changePhoneNumber()">Change number</button>
-          </div>
+          <label class="auth-label" for="signup-password">Password</label>
+          <input id="signup-password" class="auth-input" type="password"
+                 autocomplete="new-password" placeholder="At least 6 characters">
+
+          <button id="signup-submit" class="auth-btn-primary" type="submit">Create account</button>
         </form>
 
         <p id="auth-error" class="auth-error" style="display: none;" role="alert"></p>
-        <div id="recaptcha-container"></div>
+        <p id="auth-notice" class="auth-notice" style="display: none;" role="status"></p>
       </div>
       <p class="auth-footer">By continuing, you agree to level up your life.</p>
     </div>
@@ -614,8 +631,8 @@
             <div id="cloud-logged-out" class="cloud-state-content" style="display: flex; flex-direction: column; align-items: center; text-align: center;">
               <p class="cloud-desc" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: var(--spacing-md); line-height: 1.5;">Sign in to sync your progress across devices.</p>
               <button class="btn btn-primary btn-full" onclick="App.showAuthOverlay()" style="display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; max-width: 290px; height: 44px; font-size: 0.85rem; font-weight: 600; border-radius: var(--radius-md); box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
-                <i data-lucide="smartphone" style="width: 18px; height: 18px;"></i>
-                <span>Continue with Phone</span>
+                <i data-lucide="log-in" style="width: 18px; height: 18px;"></i>
+                <span>Sign in or create account</span>
               </button>
             </div>
             <!-- Logged In State -->
@@ -627,7 +644,8 @@
                   </div>
                   <div class="cloud-user-info" style="display: flex; flex-direction: column; gap: 2px;">
                     <span id="cloud-user-name" class="cloud-name" style="font-weight: 600; color: #fff; font-size: 0.85rem;">Hero</span>
-                    <span id="cloud-user-phone" class="cloud-email" style="color: var(--text-muted); font-size: 0.72rem;">+91 00000 00000</span>
+                    <span id="cloud-user-email" class="cloud-email" style="color: var(--text-muted); font-size: 0.72rem;">you@example.com</span>
+                    <span id="cloud-user-phone" class="cloud-email" style="color: var(--text-disabled); font-size: 0.7rem;">+91 00000 00000</span>
                   </div>
                 </div>
                 <button class="btn btn-outline btn-sm" onclick="App.signOut()">Sign Out</button>
@@ -759,7 +777,7 @@
 
 
         <div class="app-footer">
-          <p>Project Human v1.11.0</p>
+          <p>Project Human v1.12.0</p>
           <p>Build Your Character.</p>
         </div>
       </div>
@@ -792,6 +810,6 @@
     <div id="modal-content" class="modal-content" onclick="event.stopPropagation()"></div>
   </div>
 
-  <script type="module" src="app.js?v=1.11.0"></script>
+  <script type="module" src="app.js?v=1.12.0"></script>
 </body>
 </html>

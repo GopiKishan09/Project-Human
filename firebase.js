@@ -1,14 +1,15 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-import { 
-  getAuth, 
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-  signOut, 
-  onAuthStateChanged 
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+  signOut,
+  onAuthStateChanged
 } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
-import { 
-  initializeFirestore, 
-  persistentLocalCache, 
+import {
+  initializeFirestore,
+  persistentLocalCache,
   persistentMultipleTabManager,
   collection,
   doc,
@@ -48,7 +49,7 @@ if (firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("YOUR_")) {
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
 
-    // Phone auth SMS + reCAPTCHA follow the device language
+    // Password reset mails follow the device language
     auth.useDeviceLanguage();
 
     // Initialize Firestore with multi-tab offline persistence
@@ -57,7 +58,7 @@ if (firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("YOUR_")) {
         tabManager: persistentMultipleTabManager()
       })
     });
-    
+
     isFirebaseEnabled = true;
     console.log("Firebase Modular SDK initialized successfully with offline persistence.");
   } catch (error) {
@@ -71,8 +72,9 @@ export {
   auth,
   db,
   isFirebaseEnabled,
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
   signOut,
   onAuthStateChanged,
   collection,
