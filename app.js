@@ -17,7 +17,7 @@ import {
   getDocs,
   onSnapshot,
   writeBatch
-} from './firebase.js?v=1.12.0';
+} from './firebase.js?v=1.12.1';
 
 const App = (() => {
   'use strict';
@@ -1315,6 +1315,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
 
   let reminderSyncTimer = null;
   let lastReminderPayload = null;
+  let reminderPermissionAsked = false;
 
   /** Pushes the current reminder set to the native scheduler, if anything changed. */
   function syncNativeReminders() {
@@ -1323,10 +1324,19 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
 
     if (reminderSyncTimer) clearTimeout(reminderSyncTimer);
     reminderSyncTimer = setTimeout(() => {
-      const payload = JSON.stringify(buildReminderPayload());
-      if (payload === lastReminderPayload) return;
-      lastReminderPayload = payload;
-      try { bridge.syncReminders(payload); } catch (e) { console.error('Reminder sync failed', e); }
+      const reminders = buildReminderPayload();
+      const payload = JSON.stringify(reminders);
+      if (payload !== lastReminderPayload) {
+        lastReminderPayload = payload;
+        try { bridge.syncReminders(payload); } catch (e) { console.error('Reminder sync failed', e); }
+      }
+
+      // Android 13+ needs POST_NOTIFICATIONS before anything can be delivered.
+      // Once per session, so a denial is not nagged at.
+      if (reminders.length > 0 && !reminderPermissionAsked && !reminderPermissionGranted()) {
+        reminderPermissionAsked = true;
+        requestReminderPermission();
+      }
     }, 400);
   }
 
