@@ -19,7 +19,7 @@
   <meta name="twitter:description" content="A real-life RPG progression system. Complete actions, earn XP, level up your life.">
 
   <title>Project Human — Build Your Character</title>
-  <link rel="manifest" href="manifest.json?v=1.9.2">
+  <link rel="manifest" href="manifest.json?v=1.9.3">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="index.css?v=1.9.2">
+  <link rel="stylesheet" href="index.css?v=1.9.3">
   
   <!-- Loading Screen Styles (inline for instant render) -->
   <style>
@@ -230,8 +230,8 @@
       
       <div class="onboarding-step" id="onboarding-step-1">
         <div class="form-group">
-          <label class="form-label" for="onboarding-name-input">What should we call you?</label>
-          <input type="text" id="onboarding-name-input" class="form-input" placeholder="What should we call you?" required>
+          <label class="form-label" for="onboarding-name-input">Your name</label>
+          <input type="text" id="onboarding-name-input" class="form-input" placeholder="What should we call you?" required autocomplete="name">
         </div>
         <button class="btn btn-primary btn-full" style="margin-top: 16px;" onclick="App.nextOnboardingStep()">Continue</button>
       </div>
@@ -440,7 +440,6 @@
             <h1>Missions</h1>
             <p class="screen-subtitle">Your path to becoming legendary.</p>
           </div>
-          <button class="btn btn-primary btn-sm" onclick="App.showCreateMission()" id="header-create-mission-btn" style="flex-shrink: 0;">Create Mission</button>
         </div>
 
         <div id="missions-list" class="missions-list"></div>
@@ -730,7 +729,7 @@
 
 
         <div class="app-footer">
-          <p>Project Human v1.9.2</p>
+          <p>Project Human v1.9.3</p>
           <p>Build Your Character.</p>
         </div>
       </div>
@@ -763,6 +762,6 @@
     <div id="modal-content" class="modal-content" onclick="event.stopPropagation()"></div>
   </div>
 
-  <script type="module" src="app.js?v=1.9.2"></script>
+  <script type="module" src="app.js?v=1.9.3"></script>
 </body>
 </html>
