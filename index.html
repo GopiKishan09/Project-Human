@@ -19,7 +19,7 @@
   <meta name="twitter:description" content="A real-life RPG progression system. Complete actions, earn XP, level up your life.">
 
   <title>Project Human — Build Your Character</title>
-  <link rel="manifest" href="manifest.json?v=1.10.0">
+  <link rel="manifest" href="manifest.json?v=1.11.0">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="index.css?v=1.10.0">
+  <link rel="stylesheet" href="index.css?v=1.11.0">
   
   <!-- Loading Screen Styles (inline for instant render) -->
   <style>
@@ -206,7 +206,8 @@
       <div class="level-up-icon"><i data-lucide="chevron-up-square" style="width: 64px; height: 64px; color: #a855f7;"></i></div>
       <h2 class="level-up-title">LEVEL UP!</h2>
       <p class="level-up-level" id="level-up-level-text">Level 2</p>
-      <p class="level-up-message">You're becoming stronger.</p>
+      <p class="level-up-rank" id="level-up-rank-text" style="display: none;">New rank</p>
+      <p class="level-up-message" id="level-up-message">You're becoming stronger.</p>
       <button class="btn btn-primary" onclick="App.dismissLevelUp()">Continue</button>
     </div>
   </div>
@@ -415,6 +416,16 @@
               <span class="stat-value" id="stat-social-val">Lv. 1</span>
             </div>
           </div>
+        </div>
+
+        <!-- Momentum: the chain you do not want to break -->
+        <div id="streak-chain-card" class="streak-chain-card">
+          <div class="streak-chain-head">
+            <span class="streak-chain-title" id="streak-chain-title">Your chain</span>
+            <span class="streak-chain-count" id="streak-chain-count">0 days</span>
+          </div>
+          <div class="streak-chain-dots" id="streak-chain-dots"></div>
+          <p class="streak-chain-msg" id="streak-chain-msg"></p>
         </div>
 
         <div class="section-divider">
@@ -748,7 +759,7 @@
 
 
         <div class="app-footer">
-          <p>Project Human v1.10.0</p>
+          <p>Project Human v1.11.0</p>
           <p>Build Your Character.</p>
         </div>
       </div>
@@ -781,6 +792,6 @@
     <div id="modal-content" class="modal-content" onclick="event.stopPropagation()"></div>
   </div>
 
-  <script type="module" src="app.js?v=1.10.0"></script>
+  <script type="module" src="app.js?v=1.11.0"></script>
 </body>
 </html>

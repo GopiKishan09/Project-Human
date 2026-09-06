@@ -16,7 +16,7 @@ import {
   getDocs,
   onSnapshot,
   writeBatch
-} from './firebase.js?v=1.10.0';
+} from './firebase.js?v=1.11.0';
 
 const App = (() => {
   'use strict';
@@ -1621,6 +1621,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     document.getElementById('achievement-popup-name').textContent = ach.name;
     document.getElementById('achievement-popup-desc').textContent = ach.desc;
     overlay.classList.add('show');
+    refreshIcons();
     setTimeout(() => overlay.classList.remove('show'), 3000);
   }
 
@@ -1729,6 +1730,8 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   // ---------------------------------------------------------------------------
   // Tab Switching
   // ---------------------------------------------------------------------------
+  let pendingTabFrame = null;
+
   function switchTab(tabName) {
     const shouldSkipRender = getAppState() === 'READY'
       && currentTab === tabName
@@ -1746,9 +1749,12 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     syncNativeReminders();
     if (shouldSkipRender) return;
 
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    if (pendingTabFrame !== null) cancelAnimationFrame(pendingTabFrame);
 
-    requestAnimationFrame(() => {
+    pendingTabFrame = requestAnimationFrame(() => {
+      pendingTabFrame = null;
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+
       if (tabName === 'missions') {
         document.getElementById('screen-missions').classList.add('active');
         document.getElementById('screen-mission-detail').classList.remove('active');
@@ -1788,6 +1794,121 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     const valEl = document.getElementById(`${idPrefix}-${statKey}-val`);
     if (fillEl) fillEl.style.width = (levelInfo.progress * 100) + '%';
     if (valEl) valEl.innerHTML = `Lv. ${levelInfo.level}<br>${Math.round(statXp)} XP`;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Momentum — the chain, its risk state, and the near-miss nudge
+  // ---------------------------------------------------------------------------
+  const CHAIN_DAYS = 7;
+  const EVENING_HOUR = 18;
+
+  /** Distinct dates that have at least one completion, as a lookup. */
+  function completedDateSet() {
+    const set = new Set();
+    state.completions.forEach(c => set.add(c.date));
+    return set;
+  }
+
+  function renderStreakChain(todayActions) {
+    const dotsEl = document.getElementById('streak-chain-dots');
+    const msgEl = document.getElementById('streak-chain-msg');
+    const countEl = document.getElementById('streak-chain-count');
+    const titleEl = document.getElementById('streak-chain-title');
+    const cardEl = document.getElementById('streak-chain-card');
+    if (!dotsEl || !msgEl || !countEl || !cardEl) return;
+
+    const today = getToday();
+    const done = completedDateSet();
+    const streak = state.profile.currentStreak || 0;
+
+    // Last seven days, oldest first, so the chain reads left to right.
+    let dots = '';
+    for (let i = CHAIN_DAYS - 1; i >= 0; i--) {
+      const date = addDays(today, -i);
+      const isToday = i === 0;
+      const filled = done.has(date);
+      const label = new Date(date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'narrow' });
+      dots += `<div class="chain-day ${filled ? 'filled' : ''} ${isToday ? 'is-today' : ''}">
+        <span class="chain-dot"></span>
+        <span class="chain-day-label">${label}</span>
+      </div>`;
+    }
+    dotsEl.innerHTML = dots;
+
+    countEl.textContent = streak === 1 ? '1 day' : `${streak} days`;
+
+    const total = todayActions.length;
+    const completed = todayActions.filter(a => isCompletedToday(a.id)).length;
+    const remaining = total - completed;
+    const doneToday = done.has(today);
+    const evening = new Date().getHours() >= EVENING_HOUR;
+
+    cardEl.classList.remove('at-risk', 'perfect');
+
+    if (total === 0) {
+      titleEl.textContent = 'Your chain';
+      msgEl.textContent = 'Add an action to start building your chain.';
+      return;
+    }
+
+    if (remaining === 0) {
+      cardEl.classList.add('perfect');
+      titleEl.textContent = 'Perfect day';
+      msgEl.textContent = streak > 0
+        ? `Everything done. Chain now ${streak} ${streak === 1 ? 'day' : 'days'} long.`
+        : 'Everything done. Come back tomorrow to build the chain.';
+      return;
+    }
+
+    if (!doneToday && streak > 0) {
+      // Loss aversion: there is something real on the line right now.
+      cardEl.classList.add('at-risk');
+      titleEl.textContent = evening ? 'Chain at risk' : 'Chain alive';
+      msgEl.textContent = evening
+        ? `Your ${streak}-day chain ends tonight. One action saves it.`
+        : `One action today keeps your ${streak}-day chain alive.`;
+      return;
+    }
+
+    if (!doneToday) {
+      titleEl.textContent = 'Start a chain';
+      msgEl.textContent = 'Complete one action today to begin.';
+      return;
+    }
+
+    titleEl.textContent = 'Almost there';
+    msgEl.textContent = remaining === 1
+      ? 'Just 1 more action for a perfect day.'
+      : `${completed} done, ${remaining} to go for a perfect day.`;
+  }
+
+  /** Counts a number up so earned XP is felt rather than just displayed. */
+  function animateCount(el, from, to, duration) {
+    if (!el) return;
+    if (from === to || prefersReducedMotion()) { el.textContent = to; return; }
+    const start = performance.now();
+    const step = (now) => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      el.textContent = Math.round(from + (to - from) * eased);
+      if (t < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
+  function prefersReducedMotion() {
+    return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  /** Heavier feedback for heavier work. */
+  function celebrateHaptics(difficulty) {
+    const patterns = {
+      easy: 12,
+      medium: 18,
+      hard: [22, 40, 22],
+      legendary: [30, 40, 30, 40, 60]
+    };
+    try { navigator.vibrate && navigator.vibrate(patterns[difficulty] || 18); } catch (e) { /* unsupported */ }
   }
 
   function renderTodayScreen() {
@@ -1836,9 +1957,18 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       }
     }
 
+    renderStreakChain(todayActions);
+
     // XP bar + ring
-    document.getElementById('xp-bar-current').textContent = levelInfo.xpInLevel;
+    const xpCurrentEl = document.getElementById('xp-bar-current');
+    const previousXp = parseInt(xpCurrentEl.textContent, 10);
+    if (!isNaN(previousXp) && previousXp !== levelInfo.xpInLevel) {
+      animateCount(xpCurrentEl, previousXp, levelInfo.xpInLevel, 600);
+    } else {
+      xpCurrentEl.textContent = levelInfo.xpInLevel;
+    }
     document.getElementById('xp-bar-next').textContent = levelInfo.xpNeeded;
+    document.getElementById('stat-completion').classList.toggle('is-perfect', completionPct === 100);
     document.getElementById('xp-bar-fill').style.width = (levelInfo.progress * 100) + '%';
 
     // Update circular level ring
@@ -2812,8 +2942,12 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
 
     const actionEl = document.querySelector(`.action-item[data-action-id="${actionId}"]`);
 
-    // Haptic feedback
-    try { navigator.vibrate && navigator.vibrate(15); } catch(e) {}
+    // Haptic feedback — scaled to the difficulty being cleared
+    if (existing) {
+      try { navigator.vibrate && navigator.vibrate(10); } catch (e) { /* unsupported */ }
+    } else {
+      celebrateHaptics(action.difficulty);
+    }
 
     if (existing) {
       // Uncomplete — remove completion
@@ -2860,7 +2994,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       // Level-up check
       const levelAfter = getLevelFromXp(state.profile.totalXp);
       if (levelAfter > levelBefore) {
-        showLevelUp(levelAfter);
+        showLevelUp(levelAfter, levelBefore);
         // Haptic for level up
         try { navigator.vibrate && navigator.vibrate([50, 30, 50]); } catch(e) {}
       }
@@ -2892,9 +3026,26 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   // ---------------------------------------------------------------------------
   // Level Up Overlay
   // ---------------------------------------------------------------------------
-  function showLevelUp(level) {
+  function showLevelUp(level, previousLevel) {
     document.getElementById('level-up-level-text').textContent = 'Level ' + level;
+
+    const rankEl = document.getElementById('level-up-rank-text');
+    const msgEl = document.getElementById('level-up-message');
+    const newRank = getRank(level);
+    const rankChanged = typeof previousLevel === 'number' && getRank(previousLevel) !== newRank;
+
+    if (rankEl) {
+      rankEl.textContent = 'New rank — ' + newRank;
+      rankEl.style.display = rankChanged ? '' : 'none';
+    }
+    if (msgEl) {
+      msgEl.textContent = rankChanged
+        ? 'You are not who you were.'
+        : "You're becoming stronger.";
+    }
+
     document.getElementById('level-up-overlay').classList.add('show');
+    refreshIcons();
   }
 
   function dismissLevelUp() {
