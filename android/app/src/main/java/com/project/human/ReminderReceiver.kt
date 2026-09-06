@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import androidx.core.content.ContextCompat
 
 /**
@@ -28,6 +29,7 @@ class ReminderReceiver : BroadcastReceiver() {
                 actionId.hashCode(),
                 ReminderScheduler.buildNotification(context, title, body)
             )
+            Log.i("ReminderReceiver", "Reminder delivered for " + actionId)
         }
 
         // Re-arm for the next day, but only while the action still exists.
