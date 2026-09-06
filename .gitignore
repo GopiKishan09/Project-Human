@@ -20,3 +20,8 @@ dist/
 build/
 .env
 .vscode/
+# Android signing secrets — never commit these
+android/keystore.properties
+*.jks
+*.keystore
+!.android/debug.keystore
