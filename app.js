@@ -16,7 +16,7 @@ import {
   getDocs,
   onSnapshot,
   writeBatch
-} from './firebase.js?v=1.9.4';
+} from './firebase.js?v=1.10.0';
 
 const App = (() => {
   'use strict';
@@ -656,6 +656,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
 
   function renderCurrentScreen() {
     if (getAppState() !== 'READY') return;
+    syncNativeReminders();
     assertValidRender('dashboard');
     if(DEBUG_AUTH) console.log(`[${new Date().toISOString()}] RENDER: Dashboard rendered`);
     if (currentTab === 'today') {
@@ -1340,6 +1341,81 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   // ---------------------------------------------------------------------------
   // Recurring Logic — get today's actions
   // ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // Native reminders (Android wrapper)
+  // ---------------------------------------------------------------------------
+  // The Android shell injects window.AndroidReminders. In a plain browser it
+  // is absent, and every call below turns into a no-op.
+  function nativeReminders() {
+    const bridge = window.AndroidReminders;
+    return (bridge && typeof bridge.syncReminders === 'function') ? bridge : null;
+  }
+
+  function remindersSupported() {
+    return !!nativeReminders();
+  }
+
+  function reminderPermissionGranted() {
+    const bridge = nativeReminders();
+    if (!bridge || typeof bridge.hasPermission !== 'function') return false;
+    try { return !!bridge.hasPermission(); } catch (e) { return false; }
+  }
+
+  function exactAlarmsAllowed() {
+    const bridge = nativeReminders();
+    if (!bridge || typeof bridge.hasExactAlarms !== 'function') return true;
+    try { return !!bridge.hasExactAlarms(); } catch (e) { return true; }
+  }
+
+  function requestReminderPermission() {
+    const bridge = nativeReminders();
+    if (!bridge || typeof bridge.requestPermission !== 'function') return;
+    try { bridge.requestPermission(); } catch (e) { /* shell too old */ }
+  }
+
+  function openExactAlarmSettings() {
+    const bridge = nativeReminders();
+    if (!bridge || typeof bridge.openExactAlarmSettings !== 'function') return;
+    try { bridge.openExactAlarmSettings(); } catch (e) { /* shell too old */ }
+  }
+
+  /** Which actions still deserve a nudge today. */
+  function buildReminderPayload() {
+    return state.actions
+      .filter(a => /^\d{1,2}:\d{2}$/.test(a.reminderTime || ''))
+      .filter(a => {
+        // A one-off that is already done should stop nagging.
+        if (a.recurringType !== 'once') return true;
+        return !state.completions.some(c => c.actionId === a.id);
+      })
+      .map(a => {
+        const mission = state.missions.find(m => m.id === a.missionId);
+        return {
+          id: a.id,
+          name: a.name,
+          time: a.reminderTime,
+          missionName: mission ? mission.name : ''
+        };
+      });
+  }
+
+  let reminderSyncTimer = null;
+  let lastReminderPayload = null;
+
+  /** Pushes the current reminder set to the native scheduler, if anything changed. */
+  function syncNativeReminders() {
+    const bridge = nativeReminders();
+    if (!bridge) return;
+
+    if (reminderSyncTimer) clearTimeout(reminderSyncTimer);
+    reminderSyncTimer = setTimeout(() => {
+      const payload = JSON.stringify(buildReminderPayload());
+      if (payload === lastReminderPayload) return;
+      lastReminderPayload = payload;
+      try { bridge.syncReminders(payload); } catch (e) { console.error('Reminder sync failed', e); }
+    }, 400);
+  }
+
   function getTodayActions() {
     const today = getToday();
     const weekStart = getWeekStart(today);
@@ -1667,6 +1743,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     });
 
     if (getAppState() !== 'READY') return;
+    syncNativeReminders();
     if (shouldSkipRender) return;
 
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -2012,6 +2089,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
           <span class="difficulty-badge ${action.difficulty}">${action.difficulty}</span>
           <span class="xp-badge">+${action.xpReward} XP</span>
           <span class="recurring-badge">${action.recurringType}</span>
+        ${action.reminderTime ? `<span class="reminder-badge"><i data-lucide="bell" aria-hidden="true"></i>${escapeHtml(action.reminderTime)}</span>` : ''}
         </div>
       </div>
       <div class="detail-action-controls">
@@ -2215,6 +2293,42 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       if (loggedOutEl) loggedOutEl.style.display = '';
       if (loggedInEl) loggedInEl.style.display = 'none';
     }
+
+    renderRemindersCard();
+  }
+
+  /** Reflects the reminder system's real state on the Profile screen. */
+  function renderRemindersCard() {
+    const statusEl = document.getElementById('reminders-status');
+    const permBtn = document.getElementById('reminders-permission-btn');
+    const exactBtn = document.getElementById('reminders-exact-btn');
+    if (!statusEl || !permBtn || !exactBtn) return;
+
+    const scheduled = buildReminderPayload().length;
+    const plural = scheduled === 1 ? 'action has' : 'actions have';
+
+    if (!remindersSupported()) {
+      statusEl.textContent = scheduled > 0
+        ? `${scheduled} ${plural} a reminder time. Install the Android app to actually get notified — a browser tab cannot wake you up.`
+        : 'Set a time on any action to get reminded. Delivery needs the Android app; a browser tab cannot wake you up.';
+      permBtn.style.display = 'none';
+      exactBtn.style.display = 'none';
+      return;
+    }
+
+    if (!reminderPermissionGranted()) {
+      statusEl.textContent = 'Notifications are switched off, so your reminders cannot reach you.';
+      permBtn.style.display = '';
+      exactBtn.style.display = 'none';
+      return;
+    }
+
+    const exact = exactAlarmsAllowed();
+    statusEl.textContent = scheduled > 0
+      ? `${scheduled} ${plural} a reminder set.` + (exact ? '' : ' Android may delay them by a few minutes until exact timing is allowed.')
+      : 'Reminders are on. Set a time on any action to be nudged.';
+    permBtn.style.display = 'none';
+    exactBtn.style.display = exact ? 'none' : '';
   }
 
   // ---------------------------------------------------------------------------
@@ -2505,6 +2619,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     const name = action ? escapeAttr(action.name) : '';
     const notes = action ? escapeAttr(action.notes || '') : '';
     const duration = action && action.targetDuration ? action.targetDuration : '';
+    const reminderTime = action && action.reminderTime ? escapeAttr(action.reminderTime) : '';
     const editId = action ? action.id : '';
 
     const diffOptions = ['easy', 'medium', 'hard', 'legendary'].map(d =>
@@ -2580,6 +2695,13 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
         <label class="form-label">Recurring</label>
         <div class="recurring-selector" id="recurring-selector">${recurringOptions}</div>
       </div>
+      <div class="form-group">
+        <label class="form-label" for="action-reminder-input">Remind me at</label>
+        <input type="time" id="action-reminder-input" class="form-input" value="${reminderTime}">
+        <p class="form-hint">${remindersSupported()
+          ? 'Leave empty for no reminder.'
+          : 'Reminders are delivered by the Android app. Set a time here and install the app to get nudged.'}</p>
+      </div>
       ${categorySelectHtml}
       <input type="hidden" id="action-edit-id" value="${editId}">
       <input type="hidden" id="action-mission-id" value="${missionId}">
@@ -2603,6 +2725,8 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     const name = nameInput.value.trim();
     const notes = notesInput.value.trim();
     const targetDuration = durationInput.value ? parseInt(durationInput.value) : null;
+    const reminderInput = document.getElementById('action-reminder-input');
+    const reminderTime = (reminderInput && reminderInput.value) ? reminderInput.value : null;
 
     if (!name) return;
 
@@ -2618,6 +2742,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
         action.notes = notes;
         action.difficulty = selectedDifficulty;
         action.targetDuration = targetDuration;
+        action.reminderTime = reminderTime;
         action.recurringType = selectedRecurring;
         action.xpReward = xpReward;
         action.stats = actionStats;
@@ -2634,6 +2759,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
         notes,
         difficulty: selectedDifficulty,
         targetDuration,
+        reminderTime,
         recurringType: selectedRecurring,
         xpReward,
         stats: actionStats,
@@ -2647,6 +2773,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     }
 
     closeModal();
+    syncNativeReminders();
     if (currentMissionId) renderMissionDetail(currentMissionId);
     if (currentTab === 'today') renderTodayScreen();
   }
@@ -3334,6 +3461,12 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     const loadingScreen = document.getElementById('app-loading-screen');
     if (loadingScreen) loadingScreen.classList.remove('hidden');
 
+    // The Android shell reports the notification prompt's outcome back here.
+    window.addEventListener('android-notification-permission', () => {
+      renderRemindersCard();
+      syncNativeReminders();
+    });
+
     // Register online/offline event listeners
     window.addEventListener('online', updateConnectivityStatus);
     window.addEventListener('offline', updateConnectivityStatus);
@@ -3370,6 +3503,8 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     changePhoneNumber,
     showAuthOverlay,
     signOut,
+    requestReminderPermission,
+    openExactAlarmSettings,
     switchTab,
     showCreateMission,
     showMissionDetail,

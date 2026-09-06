@@ -20,6 +20,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.ImageView
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ProgressBar
@@ -41,11 +42,11 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         // Match the app theme colors
-        window.statusBarColor = Color.parseColor("#0a0a0f")
-        window.navigationBarColor = Color.parseColor("#0a0a0f")
+        window.statusBarColor = Color.parseColor("#0B0A12")
+        window.navigationBarColor = Color.parseColor("#0B0A12")
 
         val rootLayout = FrameLayout(this).apply {
-            setBackgroundColor(Color.parseColor("#0a0a0f"))
+            setBackgroundColor(Color.parseColor("#0B0A12"))
         }
 
         // ── WebView (behind the loading overlay) ──
@@ -54,7 +55,7 @@ class MainActivity : AppCompatActivity() {
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT
             )
-            setBackgroundColor(Color.parseColor("#0a0a0f"))
+            setBackgroundColor(Color.parseColor("#0B0A12"))
         }
         rootLayout.addView(webView)
 
@@ -64,7 +65,7 @@ class MainActivity : AppCompatActivity() {
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT
             )
-            setBackgroundColor(Color.parseColor("#0a0a0f"))
+            setBackgroundColor(Color.parseColor("#0B0A12"))
         }
 
         val centerContent = LinearLayout(this).apply {
@@ -78,17 +79,13 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Lightning bolt icon ⚡
-        val iconView = TextView(this).apply {
-            text = "⚡"
-            textSize = 48f
-            gravity = Gravity.CENTER
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
+        // The app mark, same drawable the launch screen uses
+        val iconView = ImageView(this).apply {
+            setImageResource(R.drawable.splash_icon)
+            val px = (88 * resources.displayMetrics.density).toInt()
+            layoutParams = LinearLayout.LayoutParams(px, px).apply {
                 gravity = Gravity.CENTER_HORIZONTAL
-                bottomMargin = 32
+                bottomMargin = (24 * resources.displayMetrics.density).toInt()
             }
         }
 
@@ -121,7 +118,7 @@ class MainActivity : AppCompatActivity() {
         // Subtitle
         val subtitleView = TextView(this).apply {
             text = "Build Your Character"
-            setTextColor(Color.parseColor("#666680"))
+            setTextColor(Color.parseColor("#A5A8B3"))
             textSize = 14f
             gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(
@@ -140,7 +137,7 @@ class MainActivity : AppCompatActivity() {
             }
             isIndeterminate = true
             indeterminateTintList = android.content.res.ColorStateList.valueOf(
-                Color.parseColor("#4f8cff")
+                Color.parseColor("#A855F7")
             )
         }
 
@@ -176,6 +173,9 @@ class MainActivity : AppCompatActivity() {
                 .replace("; wv)", ")")
                 .replace("Version/4.0 ", "")
         }
+
+        // Native reminder bridge — the page calls window.AndroidReminders.*
+        webView.addJavascriptInterface(WebAppBridge(this), "AndroidReminders")
 
         // Enable cookies for Firebase Auth
         CookieManager.getInstance().apply {
@@ -243,6 +243,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        // Alarms are dropped on reboot or force-stop; rebuild from the last
+        // snapshot the web app handed us.
+        ReminderScheduler.scheduleAll(applicationContext)
+    }
+
     private fun buildLaunchUrl(): String {
         val builder = Uri.parse(BASE_URL).buildUpon()
             .appendQueryParameter("utm_source", "android-app")
@@ -258,6 +265,22 @@ class MainActivity : AppCompatActivity() {
             builder.appendQueryParameter("tab", targetTab)
         }
         return builder.build().toString()
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != NotificationPermission.REQUEST_CODE) return
+        val granted = grantResults.isNotEmpty() &&
+            grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED
+        webView.evaluateJavascript(
+            "window.dispatchEvent(new CustomEvent('android-notification-permission'," +
+                "{detail:{granted:$granted}}))",
+            null
+        )
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
