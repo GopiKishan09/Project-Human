@@ -16,7 +16,7 @@ import {
   getDocs,
   onSnapshot,
   writeBatch
-} from './firebase.js?v=1.9.3';
+} from './firebase.js?v=1.9.4';
 
 const App = (() => {
   'use strict';
@@ -711,6 +711,10 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
         return 'Too many attempts from this device. Please try again later.';
       case 'auth/quota-exceeded':
         return 'SMS limit reached for now. Please try again later.';
+      case 'auth/billing-not-enabled':
+        // Firebase only sends real SMS on the Blaze plan; the Spark plan is
+        // limited to the numbers listed under "Phone numbers for testing".
+        return 'SMS sign-in is not enabled on this Firebase project yet. Upgrade the project to the Blaze plan to send real OTPs.';
       case 'auth/captcha-check-failed':
       case 'auth/unauthorized-domain':
         return 'This app domain is not authorized in Firebase Authentication. Add it in the Firebase console.';

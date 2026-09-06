@@ -1,17 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Full app mark (rounded tile + ring + figure) for the launch screen,
+     matching the web splash exactly. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="96dp"
     android:height="96dp"
-    android:viewportWidth="96"
-    android:viewportHeight="96">
-    <!-- Subtle circular glow background -->
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+
+    <path android:pathData="M115,0 L397,0 A115,115 0 0 1 512,115 L512,397 A115,115 0 0 1 397,512 L115,512 A115,115 0 0 1 0,397 L0,115 A115,115 0 0 1 115,0 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="0"
+                android:startY="0"
+                android:endX="512"
+                android:endY="512"
+                android:startColor="#2A1055"
+                android:endColor="#0B0A12" />
+        </aapt:attr>
+    </path>
+
     <path
-        android:fillColor="#1a4f8cff"
-        android:pathData="M48,48m-40,0a40,40 0,1,1 80,0a40,40 0,1,1 -80,0"/>
+        android:pathData="M256,96 A160,160 0 0 1 256,416 A160,160 0 0 1 256,96"
+        android:strokeWidth="34"
+        android:strokeColor="#FFFFFF"
+        android:strokeAlpha="0.08"
+        android:fillColor="@android:color/transparent" />
+
     <path
-        android:fillColor="#104f8cff"
-        android:pathData="M48,48m-46,0a46,46 0,1,1 92,0a46,46 0,1,1 -92,0"/>
-    <!-- Lightning bolt - perfectly centered -->
+        android:pathData="M256,96 A160,160 0 0 1 256,416 A160,160 0 0 1 256,96"
+        android:strokeWidth="34"
+        android:strokeLineCap="round"
+        android:trimPathStart="0"
+        android:trimPathEnd="0.75"
+        android:fillColor="@android:color/transparent">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:type="linear"
+                android:startX="96"
+                android:startY="416"
+                android:endX="416"
+                android:endY="96"
+                android:startColor="#A855F7"
+                android:endColor="#FBBF24" />
+        </aapt:attr>
+    </path>
+
     <path
-        android:fillColor="#ffd04f"
-        android:pathData="M52,12 L28,50 L44,50 L38,84 L68,46 L52,46 Z"/>
+        android:fillColor="#FFFFFF"
+        android:pathData="M226,176 A30,30 0 1 1 286,176 A30,30 0 1 1 226,176 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M256,220 L322,330 L286,330 L286,366 L226,366 L226,330 L190,330 Z" />
 </vector>

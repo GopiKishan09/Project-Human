@@ -1,9 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Status-bar icon: the rising figure alone. The ring turns to mush at
+     24dp, and notification icons must be a flat white silhouette. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
-    <path
-        android:fillColor="#ffffff"
-        android:pathData="M13,2 L7,11 L11,11 L10,22 L17,10 L12,10 Z"/>
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <group
+        android:pivotX="256"
+        android:pivotY="256"
+        android:scaleX="1.45"
+        android:scaleY="1.45">
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M226,176 A30,30 0 1 1 286,176 A30,30 0 1 1 226,176 Z" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M256,220 L322,330 L286,330 L286,366 L226,366 L226,330 L190,330 Z" />
+    </group>
 </vector>
