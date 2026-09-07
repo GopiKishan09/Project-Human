@@ -17,7 +17,7 @@ import {
   getDocs,
   onSnapshot,
   writeBatch
-} from './firebase.js?v=2.1.1';
+} from './firebase.js?v=2.2.0';
 
 const App = (() => {
   'use strict';
@@ -27,7 +27,8 @@ const App = (() => {
   // ---------------------------------------------------------------------------
   const STORAGE_KEYS = {
     theme: 'ph_theme',
-    currentTab: 'ph_current_tab'
+    currentTab: 'ph_current_tab',
+    notifyAsked: 'ph_notify_asked'
   };
 
   const XP_MAP = { easy: 10, medium: 25, hard: 50, legendary: 100 };
@@ -928,6 +929,51 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       logAuthError('Password reset failed', e);
       setAuthError(describeAuthError(e));
     }
+  }
+
+  /**
+   * Android 13+ only shows the notification prompt about twice before the
+   * choice sticks for good, so the moment it is spent matters. Right after
+   * onboarding the person has just built a character and seen what the app
+   * is for — far better odds than a cold first-launch prompt, and much
+   * earlier than waiting for them to set their first reminder.
+   */
+  function askForNotificationsOnce() {
+    if (!remindersSupported() || reminderPermissionGranted()) return;
+    try {
+      if (localStorage.getItem(STORAGE_KEYS.notifyAsked)) return;
+      localStorage.setItem(STORAGE_KEYS.notifyAsked, '1');
+    } catch (e) { /* private mode — asking once more is harmless */ }
+    showNotificationPrimer();
+  }
+
+  /**
+   * Our own dialog runs before the system one. It buys two things: the
+   * person reads why the permission matters instead of guessing, and
+   * "Not now" costs nothing — Android's prompt is only offered about twice
+   * before the answer sticks for good, and this way a soft no never spends
+   * one of those.
+   */
+  function showNotificationPrimer() {
+    openModal(`<div class="modal-header">
+      <h2>Don't miss a day</h2>
+      <button class="modal-close" onclick="App.closeModal()">×</button>
+    </div>
+    <div class="confirm-content">
+      <p>Reminders are how this app keeps your chain alive. Set a time on any
+      action and Project Human will nudge you — even when the app is closed.</p>
+      <p>Without notifications your reminders are scheduled but never arrive.</p>
+      <div class="confirm-actions">
+        <button class="btn btn-secondary" onclick="App.closeModal()">Not now</button>
+        <button class="btn btn-primary" onclick="App.allowNotifications()">Allow</button>
+      </div>
+    </div>`);
+  }
+
+  /** Primer's accept path: close ours, then let the system ask. */
+  function allowNotifications() {
+    closeModal();
+    setTimeout(requestReminderPermission, 260);
   }
 
   function showAuthOverlay() {
@@ -3121,6 +3167,9 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
 
     switchTab(currentTab);
     showToast('Your journey begins!', 'success');
+
+    // Let the welcome toast land before the system dialog covers it.
+    setTimeout(askForNotificationsOnce, 1200);
   }
 
   function generateArchetypesStarterData(archetypes) {
@@ -3605,6 +3654,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     showAuthOverlay,
     signOut,
     requestReminderPermission,
+    allowNotifications,
     openExactAlarmSettings,
     switchTab,
     showCreateMission,
