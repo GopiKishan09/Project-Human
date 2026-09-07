@@ -17,7 +17,7 @@ import {
   getDocs,
   onSnapshot,
   writeBatch
-} from './firebase.js?v=2.2.1';
+} from './firebase.js?v=2.3.0';
 
 const App = (() => {
   'use strict';
@@ -1457,6 +1457,16 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   // Power Score has been completely removed from Project Human.
 
   function shouldActionAppearOnDate(action, dateStr) {
+    // An action cannot have been due before it existed. Without this, adding
+    // one today counts it as missed on every earlier day, and a perfect
+    // month collapses the moment someone adds a habit.
+    if (action.createdAt) {
+      const created = new Date(action.createdAt);
+      if (!isNaN(created)) {
+        if (dateStr < formatDate(created)) return false;
+      }
+    }
+
     const weekStart = getWeekStart(dateStr);
     const monthStart = getMonthStart(dateStr);
 

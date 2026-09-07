@@ -1598,3 +1598,41 @@ textarea.form-input { min-height: 74px; resize: vertical; }
     border-right: var(--rule);
   }
 }
+
+/* ── Native feel ──────────────────────────────────────────────────────────
+   A long press in a WebView selects text and raises the copy callout, which
+   immediately reads as "this is a web page". Chrome is not selectable; the
+   places where copying is genuinely useful still are. */
+
+body {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+input,
+textarea,
+select,
+[contenteditable="true"],
+.cloud-email,
+.cloud-name,
+.action-name,
+.mission-card-name,
+.mission-card-desc,
+.auth-error,
+.auth-notice {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+
+/* The Modernist artboards carry no mission icons — the name does the work.
+   Both remaining icons are injected inline by app.js, so they are hidden
+   here rather than removed from the render. */
+#mission-detail-title i,
+#mission-detail-title svg,
+.progress-mission-header i,
+.progress-mission-header svg {
+  display: none;
+}
