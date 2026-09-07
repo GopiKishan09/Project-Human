@@ -17,7 +17,7 @@ import {
   getDocs,
   onSnapshot,
   writeBatch
-} from './firebase.js?v=2.2.0';
+} from './firebase.js?v=2.2.1';
 
 const App = (() => {
   'use strict';
@@ -34,7 +34,6 @@ const App = (() => {
   const XP_MAP = { easy: 10, medium: 25, hard: 50, legendary: 100 };
 
   const ICONS = ['🏆','💪','🧠','💰','🎯','📚','💼','🏃‍♂️','🎨','🔬','📈','❤️','🌟','⚡','🚀','🎮','🛡️','⚔️','🐉','🌍'];
-  const COLORS = ['#4f8cff','#a855f7','#10b981','#f59e0b','#f43f5e','#ec4899','#06b6d4','#8b5cf6','#ef4444','#14b8a6'];
 
 
   const emojiToLucide = {
@@ -144,7 +143,6 @@ const App = (() => {
   let selectedDifficulty = 'medium';
   let selectedRecurring = 'daily';
   let selectedIcon = '🏆';
-  let selectedColor = '#4f8cff';
 
   // Firebase State Variables
   let unsubscribeList = [];
@@ -2058,7 +2056,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       });
       const totalXp = missionCompletions.reduce((sum, c) => sum + c.xpEarned, 0);
 
-      html += `<div class="mission-card" style="--mission-color: ${mission.color}" onclick="App.showMissionDetail('${mission.id}')">
+      html += `<div class="mission-card" onclick="App.showMissionDetail('${mission.id}')">
         <div class="mission-card-header">
           <span class="mission-card-icon"><i data-lucide="${getLucide(mission.icon)}"></i></span>
           <div class="mission-card-info">
@@ -2305,7 +2303,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       });
       const totalXp = missionCompletions.reduce((sum, c) => sum + c.xpEarned, 0);
 
-      html += `<div class="progress-mission-card" style="--mission-color: ${mission.color}">
+      html += `<div class="progress-mission-card">
         <div class="progress-mission-header">
           <span><i data-lucide="${getLucide(mission.icon)}"></i></span>
           <span>${escapeHtml(mission.name)}</span>
@@ -2458,7 +2456,6 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   // ---------------------------------------------------------------------------
   function showCreateMission() {
     selectedIcon = '🏆';
-    selectedColor = '#4f8cff';
     openModal(buildMissionFormHtml(false));
   }
 
@@ -2468,7 +2465,6 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     if (!mission) return;
 
     selectedIcon = mission.icon;
-    selectedColor = mission.color;
     openModal(buildMissionFormHtml(true, mission));
   }
 
@@ -2479,10 +2475,6 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
 
     let iconHtml = ICONS.map(ic =>
       `<button type="button" class="icon-option ${ic === selectedIcon ? 'active' : ''}" onclick="App.selectIcon('${ic}')">${ic}</button>`
-    ).join('');
-
-    let colorHtml = COLORS.map(c =>
-      `<button type="button" class="color-option ${c === selectedColor ? 'active' : ''}" style="background:${c}" onclick="App.selectColor('${c}')"></button>`
     ).join('');
 
     return `<div class="modal-header">
@@ -2501,10 +2493,6 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       <div class="form-group">
         <label class="form-label">Description</label>
         <textarea id="mission-desc-input" class="form-input" placeholder="What's this mission about?" rows="3">${desc}</textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Color</label>
-        <div class="color-picker" id="color-picker">${colorHtml}</div>
       </div>
       <input type="hidden" id="mission-edit-id" value="${editId}">
       <button type="submit" class="btn btn-primary btn-full">${isEdit ? 'Update Mission' : 'Create Mission'}</button>
@@ -2529,7 +2517,6 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
         mission.name = name;
         mission.description = description;
         mission.icon = selectedIcon;
-        mission.color = selectedColor;
         showToast('Mission updated!', 'success');
         dbSetMission(mission);
       }
@@ -2540,7 +2527,6 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
         name,
         icon: selectedIcon,
         description,
-        color: selectedColor,
         createdAt: new Date().toISOString()
       };
       if (isFirebaseEnabled && auth.currentUser) {
@@ -3456,13 +3442,6 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     });
   }
 
-  function selectColor(color) {
-    selectedColor = color;
-    document.querySelectorAll('#color-picker .color-option').forEach(btn => {
-      btn.classList.toggle('active', btn.style.background === color || rgbToHex(btn.style.backgroundColor) === color);
-    });
-  }
-
   // ---------------------------------------------------------------------------
   // Mission Detail Navigation
   // ---------------------------------------------------------------------------
@@ -3558,15 +3537,6 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
 
   function escapeAttr(str) {
     return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  }
-
-  function rgbToHex(rgb) {
-    if (!rgb || rgb.startsWith('#')) return rgb;
-    const match = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
-    if (!match) return rgb;
-    return '#' + [match[1], match[2], match[3]].map(x =>
-      parseInt(x).toString(16).padStart(2, '0')
-    ).join('');
   }
 
   function updateConnectivityStatus() {
@@ -3683,7 +3653,6 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     selectDifficulty,
     selectRecurring,
     selectIcon,
-    selectColor,
     executeDeleteMission,
     executeDeleteAttribute,
     executeDeleteAction,

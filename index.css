@@ -716,14 +716,19 @@ h1, h2, h3, h4 {
   text-transform: uppercase;
   color: var(--color-neutral-600);
 }
+/* The design sets each mission's figure against its title, top right. */
+.mission-card { position: relative; }
 .mission-card-percent {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
   font-family: var(--font-heading);
   font-size: 1.15rem;
   font-weight: 800;
   line-height: 1;
   color: var(--color-accent);
-  flex: 0 0 auto;
 }
+.mission-card-info { padding-right: 56px; }
 
 /* ── Mission detail ───────────────────────────────────────────────────── */
 
