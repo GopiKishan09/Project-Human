@@ -1533,3 +1533,63 @@ textarea.form-input { min-height: 74px; resize: vertical; }
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── Wide viewports ───────────────────────────────────────────────────────
+   The system is drawn as a phone artboard. On a desktop browser — which a
+   PWA still opens in — an unconstrained ledger stretches its rules and bars
+   across the whole window. Hold the app to a column and let the ground
+   surround it. */
+
+@media (min-width: 560px) {
+  :root { --app-width: 460px; }
+
+  body { background: var(--color-neutral-200); }
+
+  .screen {
+    left: 50%;
+    right: auto;
+    width: var(--app-width);
+    transform: translateX(-50%);
+    background: var(--color-bg);
+    border-left: var(--rule);
+    border-right: var(--rule);
+  }
+
+  .bottom-nav {
+    left: 50%;
+    right: auto;
+    width: var(--app-width);
+    transform: translateX(-50%);
+    border-left: var(--rule);
+    border-right: var(--rule);
+  }
+
+  /* The FAB rides the column's inner edge, not the window's. */
+  .fab { right: calc(50% - (var(--app-width) / 2) + var(--space-4)); }
+
+  .toast-container { max-width: var(--app-width); margin: 0 auto; }
+
+  .modal-overlay { align-items: center; }
+  .modal-content {
+    max-width: var(--app-width);
+    margin: 0 auto;
+    max-height: 82dvh;
+    border: 1px solid var(--color-text);
+    border-top-width: 3px;
+  }
+
+  /* Full-screen overlays keep the same column so the mark and forms do not
+     drift apart on a wide window. */
+  .auth-overlay,
+  .onboarding-overlay,
+  .level-up-overlay,
+  .achievement-overlay,
+  .daily-victory-overlay {
+    left: 50%;
+    right: auto;
+    width: var(--app-width);
+    transform: translateX(-50%);
+    border-left: var(--rule);
+    border-right: var(--rule);
+  }
+}
