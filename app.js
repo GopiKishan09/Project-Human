@@ -17,7 +17,7 @@ import {
   getDocs,
   onSnapshot,
   writeBatch
-} from './firebase.js?v=2.4.0';
+} from './firebase.js?v=2.4.1';
 
 const App = (() => {
   'use strict';
@@ -3494,15 +3494,20 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     // A modal sits on top of everything else.
     if (isOpen('modal-overlay')) { closeModal(); return true; }
 
-    // Reward overlays are dismissible; onboarding and the auth gate are not —
-    // backing out of those would strand the person on a blank shell.
+    // Reward overlays are dismissible.
     if (isOpen('daily-victory-overlay')) { dismissDailyVictory(); return true; }
     if (isOpen('level-up-overlay')) { dismissLevelUp(); return true; }
     if (isOpen('achievement-overlay')) {
       document.getElementById('achievement-overlay').classList.remove('show');
       return true;
     }
-    if (isOpen('onboarding-overlay') || isOpen('auth-overlay')) return true;
+
+    // Before the app is usable — sign-in, onboarding, still loading — swallow
+    // the press: there is nothing behind these to go back to. Keyed on app
+    // state rather than the overlay's class, because a stale .show left on a
+    // hidden gate would otherwise trap back forever and the app could never
+    // be closed at all.
+    if (getAppState() !== 'READY') return true;
 
     // Inside a mission, back returns to the mission list.
     if (currentMissionId) { goBackToMissions(); return true; }
