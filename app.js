@@ -17,7 +17,7 @@ import {
   getDocs,
   onSnapshot,
   writeBatch
-} from './firebase.js?v=2.3.0';
+} from './firebase.js?v=2.3.1';
 
 const App = (() => {
   'use strict';
@@ -186,7 +186,7 @@ const App = (() => {
         console.error("================ WATCHDOG TRIGGERED ================");
         console.error("App stuck in LOADING state for > 10 seconds.");
         console.error("Current FSM State:", getAppState());
-        console.error("Firebase CurrentUser:", auth && auth.currentUser ? auth.currentUser.uid : "null");
+        console.error("Firebase session:", auth && auth.currentUser ? "signed in" : "none");
         console.error("Watchdog Triggered at:", new Date().toISOString());
         console.error("====================================================");
       }
@@ -732,7 +732,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       case 'auth/invalid-continue-uri':
         return 'This app domain is not authorised in Firebase Authentication. Add it under Authentication > Settings > Authorized domains.';
       default:
-        return (error && error.message) ? error.message : 'Something went wrong. Please try again.';
+        return 'Something went wrong. Please try again.';
     }
   }
 
@@ -1004,7 +1004,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       })
       .catch(e => {
         console.error("Sign-out failed:", e);
-        showToast("Sign-out failed: " + e.message, "error");
+        showToast("Could not sign out. Please try again.", "error");
       });
   }
 
@@ -1776,6 +1776,15 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   // ---------------------------------------------------------------------------
   // RENDER: Today Screen
   // ---------------------------------------------------------------------------
+  /** Up to two initials from the character name, falling back to the email. */
+  function getInitials(name, email) {
+    const source = (name || '').trim() || (email || '').split('@')[0].replace(/[._-]+/g, ' ');
+    const parts = source.split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return 'PH';
+    const letters = (parts.length === 1 ? parts[0].slice(0, 2) : parts[0][0] + parts[1][0]);
+    return letters.toUpperCase();
+  }
+
   function getRank(level) {
     if (level < 5) return 'Civilian';
     if (level < 10) return 'Apprentice';
@@ -2415,7 +2424,9 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       const nameEl = document.getElementById('cloud-user-name');
       const emailEl = document.getElementById('cloud-user-email');
       const phoneEl = document.getElementById('cloud-user-phone');
+      const initialsEl = document.getElementById('cloud-user-initials');
 
+      if (initialsEl) initialsEl.textContent = getInitials(state.profile.charName, user.email);
       if (nameEl) nameEl.textContent = state.profile.charName || 'Hero';
       if (emailEl) emailEl.textContent = user.email || '';
       if (phoneEl) phoneEl.textContent = state.profile.phone || '';

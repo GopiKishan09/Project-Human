@@ -4,7 +4,7 @@ import {
   verifyPasswordResetCode,
   confirmPasswordReset,
   applyActionCode
-} from './firebase.js?v=2.1.0';
+} from './firebase.js?v=2.3.1';
 
 /**
  * Firebase's own action handler is an unstyled white page. Pointing the
@@ -55,7 +55,7 @@ import {
       case 'auth/network-request-failed':
         return 'Network error. Check your connection and try again.';
       default:
-        return (error && error.message) ? error.message : 'Something went wrong. Please try again.';
+        return 'Something went wrong. Please try again.';
     }
   }
 
