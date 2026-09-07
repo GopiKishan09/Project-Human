@@ -17,7 +17,7 @@ import {
   getDocs,
   onSnapshot,
   writeBatch
-} from './firebase.js?v=2.4.1';
+} from './firebase.js?v=2.4.2';
 
 const App = (() => {
   'use strict';
@@ -82,9 +82,11 @@ const App = (() => {
 
   function refreshIcons() {
     if (window.lucide) {
-      requestAnimationFrame(() => {
-        window.lucide.createIcons();
-      });
+      // Called directly rather than inside requestAnimationFrame: rAF does not
+      // run while the page is not being painted, so a render that happened
+      // while the app sat in the background left its icons as bare <i> tags.
+      // createIcons only walks for i[data-lucide], so repeat calls are cheap.
+      try { window.lucide.createIcons(); } catch (e) { /* bundle half-loaded */ }
       return;
     }
     // The lucide bundle is deferred and comes off a CDN, so it can still be
