@@ -17,7 +17,7 @@ import {
   getDocs,
   onSnapshot,
   writeBatch
-} from './firebase.js?v=2.3.1';
+} from './firebase.js?v=2.4.0';
 
 const App = (() => {
   'use strict';
@@ -3477,6 +3477,42 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     refreshIcons();
   }
 
+  /**
+   * One step back through whatever is open, innermost first. Returns true if
+   * something was closed, false when there is nothing left — the caller
+   * (the Android shell) then lets the platform leave the app.
+   *
+   * The app never changes its URL, so the WebView's own history is always
+   * empty and back would otherwise close the app from any screen.
+   */
+  function handleBackPress() {
+    const isOpen = id => {
+      const el = document.getElementById(id);
+      return !!el && el.classList.contains('show');
+    };
+
+    // A modal sits on top of everything else.
+    if (isOpen('modal-overlay')) { closeModal(); return true; }
+
+    // Reward overlays are dismissible; onboarding and the auth gate are not —
+    // backing out of those would strand the person on a blank shell.
+    if (isOpen('daily-victory-overlay')) { dismissDailyVictory(); return true; }
+    if (isOpen('level-up-overlay')) { dismissLevelUp(); return true; }
+    if (isOpen('achievement-overlay')) {
+      document.getElementById('achievement-overlay').classList.remove('show');
+      return true;
+    }
+    if (isOpen('onboarding-overlay') || isOpen('auth-overlay')) return true;
+
+    // Inside a mission, back returns to the mission list.
+    if (currentMissionId) { goBackToMissions(); return true; }
+
+    // From any other tab, back returns to Today.
+    if (currentTab !== 'today') { switchTab('today'); return true; }
+
+    return false;
+  }
+
   function goBackToMissions() {
     currentMissionId = null;
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -3648,6 +3684,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     allowNotifications,
     openExactAlarmSettings,
     switchTab,
+    handleBackPress,
     showCreateMission,
     showMissionDetail,
     goBackToMissions,

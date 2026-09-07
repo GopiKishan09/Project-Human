@@ -11,7 +11,6 @@ import android.graphics.Typeface
 import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
-import android.view.KeyEvent
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.webkit.CookieManager
@@ -25,6 +24,7 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
@@ -232,6 +232,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        onBackPressedDispatcher.addCallback(this, backCallback)
+
         // Load page
         if (savedInstanceState != null) {
             webView.restoreState(savedInstanceState)
@@ -283,12 +285,26 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        if (keyCode == KeyEvent.KEYCODE_BACK && webView.canGoBack()) {
-            webView.goBack()
-            return true
+    /**
+     * The page is a single document — tabs, mission detail and sheets are all
+     * JS state rather than navigation — so the WebView's own history is always
+     * empty and canGoBack() never becomes true. Left to itself, back closed the
+     * app from any screen. Ask the page to unwind one layer first, and only
+     * leave when it reports there is nothing left to close.
+     */
+    private val backCallback = object : OnBackPressedCallback(true) {
+        override fun handleOnBackPressed() {
+            webView.evaluateJavascript(
+                "(function(){try{return (window.App && App.handleBackPress) ? App.handleBackPress() : false}catch(e){return false}})()"
+            ) { result ->
+                if (result != "true") {
+                    // Nothing left in the page: let the platform take the gesture.
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                    isEnabled = true
+                }
+            }
         }
-        return super.onKeyDown(keyCode, event)
     }
 
     override fun onNewIntent(intent: Intent?) {
