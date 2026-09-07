@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0B0A12">
+  <meta name="robots" content="noindex">
+  <title>Project Human — Account</title>
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="index.css?v=1.13.0">
+  <style>
+    /* This page is a single centred card; it borrows the app's tokens and
+       auth field styles from index.css rather than restating them. */
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      background: var(--bg-primary, #0B0A12);
+      color: var(--text-primary, #F5F6FA);
+      font-family: var(--font-body, 'Inter', system-ui, sans-serif);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      padding-bottom: max(24px, env(safe-area-inset-bottom));
+    }
+    .action-card {
+      width: 100%;
+      max-width: 380px;
+      text-align: center;
+    }
+    .action-mark {
+      display: block;
+      margin: 0 auto 22px;
+      border-radius: 22px;
+      box-shadow: 0 18px 44px rgba(147, 51, 234, 0.32);
+    }
+    .action-title {
+      font-family: var(--font-heading, 'Outfit', sans-serif);
+      font-size: 1.5rem;
+      font-weight: 800;
+      margin: 0 0 8px;
+      letter-spacing: -0.01em;
+    }
+    .action-sub {
+      color: var(--text-secondary, #A5A8B3);
+      font-size: 0.88rem;
+      line-height: 1.55;
+      margin: 0 0 24px;
+    }
+    .action-sub strong { color: var(--text-primary, #F5F6FA); font-weight: 600; }
+    .action-form { display: flex; flex-direction: column; gap: var(--spacing-sm, 12px); text-align: left; }
+    .action-state { display: none; }
+    .action-state.active { display: block; }
+    .action-spinner {
+      width: 26px; height: 26px;
+      margin: 8px auto 0;
+      border: 2.5px solid rgba(168, 85, 247, 0.16);
+      border-top-color: #A855F7;
+      border-radius: 50%;
+      animation: actionSpin 0.8s linear infinite;
+    }
+    @keyframes actionSpin { to { transform: rotate(360deg); } }
+    .action-success-icon {
+      width: 62px; height: 62px;
+      margin: 0 auto 18px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(52, 211, 153, 0.12);
+      border: 1px solid rgba(52, 211, 153, 0.3);
+      color: #34D399;
+      font-size: 30px;
+      font-weight: 700;
+    }
+    @media (prefers-reduced-motion: reduce) { .action-spinner { animation: none; } }
+  </style>
+</head>
+<body>
+  <main class="action-card">
+    <svg class="action-mark" width="72" height="72" viewBox="0 0 512 512" aria-hidden="true">
+      <defs>
+        <linearGradient id="aaBg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#2A1055"/><stop offset="100%" stop-color="#0B0A12"/>
+        </linearGradient>
+        <linearGradient id="aaRing" x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0%" stop-color="#A855F7"/><stop offset="100%" stop-color="#FBBF24"/>
+        </linearGradient>
+      </defs>
+      <rect width="512" height="512" rx="115" fill="url(#aaBg)"/>
+      <circle cx="256" cy="256" r="160" fill="none" stroke="#ffffff" stroke-opacity="0.08" stroke-width="34"/>
+      <circle cx="256" cy="256" r="160" fill="none" stroke="url(#aaRing)" stroke-width="34" stroke-linecap="round"
+              stroke-dasharray="1005" stroke-dashoffset="251" transform="rotate(-90 256 256)"/>
+      <circle cx="256" cy="176" r="30" fill="#ffffff"/>
+      <path d="M256 220 L322 330 H286 V366 H226 V330 H190 Z" fill="#ffffff"/>
+    </svg>
+
+    <!-- Checking the link -->
+    <section id="state-loading" class="action-state active">
+      <h1 class="action-title">Checking your link</h1>
+      <p class="action-sub">One moment.</p>
+      <div class="action-spinner"></div>
+    </section>
+
+    <!-- Choose a new password -->
+    <section id="state-reset" class="action-state">
+      <h1 class="action-title">Set a new password</h1>
+      <p class="action-sub">for <strong id="reset-email">your account</strong></p>
+      <form class="action-form" id="reset-form" novalidate>
+        <label class="auth-label" for="new-password">New password</label>
+        <input id="new-password" class="auth-input" type="password" autocomplete="new-password"
+               placeholder="At least 6 characters">
+        <label class="auth-label" for="confirm-password">Confirm password</label>
+        <input id="confirm-password" class="auth-input" type="password" autocomplete="new-password"
+               placeholder="Type it again">
+        <button id="reset-submit" class="auth-btn-primary" type="submit">Save new password</button>
+        <p id="reset-error" class="auth-error" style="display: none;" role="alert"></p>
+      </form>
+    </section>
+
+    <!-- Done -->
+    <section id="state-done" class="action-state">
+      <div class="action-success-icon">✓</div>
+      <h1 class="action-title" id="done-title">Password changed</h1>
+      <p class="action-sub" id="done-sub">You can sign in with your new password now.</p>
+      <a class="auth-btn-primary" id="done-link" href="./index.html"
+         style="text-decoration: none;">Open Project Human</a>
+    </section>
+
+    <!-- Link no good -->
+    <section id="state-error" class="action-state">
+      <h1 class="action-title">This link didn't work</h1>
+      <p class="action-sub" id="error-sub">The link may have expired or already been used.</p>
+      <a class="auth-btn-primary" href="./index.html" style="text-decoration: none;">Back to sign in</a>
+    </section>
+  </main>
+
+  <script type="module" src="auth-action.js?v=1.13.0"></script>
+</body>
+</html>
