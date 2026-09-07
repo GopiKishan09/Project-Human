@@ -17,7 +17,7 @@ import {
   getDocs,
   onSnapshot,
   writeBatch
-} from './firebase.js?v=1.13.1';
+} from './firebase.js?v=2.0.0';
 
 const App = (() => {
   'use strict';
@@ -2020,6 +2020,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
             <p class="mission-card-desc">${escapeHtml(mission.description || '')}</p>
           </div>
         </div>
+        <span class="mission-card-percent">${Math.round(progress)}%</span>
         <div class="mission-card-progress">
           <div class="mission-card-progress-bar">
             <div class="mission-card-progress-fill" style="width: ${progress}%"></div>

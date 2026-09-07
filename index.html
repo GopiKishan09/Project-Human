@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#0a0a0f">
+  <meta name="theme-color" content="#f3f2f2">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="description" content="Build Your Character — A real-life RPG progression system. Complete actions, earn XP, level up.">
 
   <!-- Open Graph / Social Sharing -->
@@ -19,7 +19,7 @@
   <meta name="twitter:description" content="A real-life RPG progression system. Complete actions, earn XP, level up your life.">
 
   <title>Project Human — Build Your Character</title>
-  <link rel="manifest" href="manifest.json?v=1.13.1">
+  <link rel="manifest" href="manifest.json?v=2.0.0">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -28,8 +28,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="index.css?v=1.13.1">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="index.css?v=2.0.0">
   
   <!-- Loading Screen Styles (inline for instant render) -->
   <style>
@@ -37,7 +37,7 @@
       position: fixed;
       inset: 0;
       z-index: 99999;
-      background: #060608;
+      background: #f3f2f2;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -66,16 +66,16 @@
       100% { stroke-dashoffset: 1005; opacity: 0.55; }
     }
     .app-loading-title {
-      color: #f0f0f5;
-      font-family: 'Outfit', 'Inter', sans-serif;
+      color: #201e1d;
+      font-family: 'Archivo', system-ui, sans-serif;
       font-size: 22px;
-      font-weight: 900;
-      letter-spacing: 5px;
+      font-weight: 800;
+      letter-spacing: 4px;
       margin: 0 0 6px 0;
     }
     .app-loading-subtitle {
-      color: rgba(255,255,255,0.35);
-      font-family: 'Inter', sans-serif;
+      color: #7d7979;
+      font-family: 'Archivo', system-ui, sans-serif;
       font-size: 13px;
       font-weight: 500;
       margin: 0 0 36px 0;
@@ -127,7 +127,7 @@
       </div>
     <h1 class="app-loading-title">PROJECT HUMAN</h1>
     <p class="app-loading-subtitle">Build Your Character</p>
-    <div class="app-loading-bar-wrapper" style="width: 180px; height: 3px; background: rgba(255,255,255,0.06); border-radius: 9999px; overflow: hidden; margin-top: 28px;"><div style="width: 30%; height: 100%; background: linear-gradient(90deg, #7C3AED, #A855F7, #FBBF24); border-radius: 9999px; animation: loadingSkeleton 1.8s infinite ease-in-out;"></div></div>
+    <div class="app-loading-bar-wrapper" style="width: 180px; height: 3px; background: #d7d3d3; overflow: hidden; margin-top: 28px;"><div style="width: 30%; height: 100%; background: #ec3013; animation: loadingSkeleton 1.8s infinite ease-in-out;"></div></div>
   </div>
 
   <!-- Auth Overlay -->
@@ -626,26 +626,26 @@
 
         <!-- Account Card at the very top -->
         <div class="settings-section" style="margin: var(--spacing-sm) var(--spacing-md) var(--spacing-lg);">
-          <div class="cloud-sync-card" id="cloud-sync-card" style="padding: var(--spacing-lg) var(--spacing-md);">
+          <div class="cloud-sync-card" id="cloud-sync-card">
             <!-- Logged Out State -->
-            <div id="cloud-logged-out" class="cloud-state-content" style="display: flex; flex-direction: column; align-items: center; text-align: center;">
-              <p class="cloud-desc" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: var(--spacing-md); line-height: 1.5;">Sign in to sync your progress across devices.</p>
-              <button class="btn btn-primary btn-full" onclick="App.showAuthOverlay()" style="display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; max-width: 290px; height: 44px; font-size: 0.85rem; font-weight: 600; border-radius: var(--radius-md); box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+            <div id="cloud-logged-out" class="cloud-state-content">
+              <p class="cloud-desc">Sign in to sync your progress across devices.</p>
+              <button class="btn btn-primary btn-full" onclick="App.showAuthOverlay()">
                 <i data-lucide="log-in" style="width: 18px; height: 18px;"></i>
                 <span>Sign in or create account</span>
               </button>
             </div>
             <!-- Logged In State -->
             <div id="cloud-logged-in" class="cloud-state-content" style="display: none;">
-              <div class="cloud-user-row" style="display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-md); flex-wrap: wrap; width: 100%;">
-                <div class="cloud-user-details" style="display: flex; align-items: center; gap: var(--spacing-md);">
-                  <div class="cloud-avatar" style="width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.08); background: rgba(147, 51, 234, 0.12); display: flex; align-items: center; justify-content: center; color: var(--primary, #9333EA);">
+              <div class="cloud-user-row">
+                <div class="cloud-user-details">
+                  <div class="cloud-avatar">
                     <i data-lucide="smartphone" style="width: 20px; height: 20px;"></i>
                   </div>
-                  <div class="cloud-user-info" style="display: flex; flex-direction: column; gap: 2px;">
-                    <span id="cloud-user-name" class="cloud-name" style="font-weight: 600; color: #fff; font-size: 0.85rem;">Hero</span>
-                    <span id="cloud-user-email" class="cloud-email" style="color: var(--text-muted); font-size: 0.72rem;">you@example.com</span>
-                    <span id="cloud-user-phone" class="cloud-email" style="color: var(--text-disabled); font-size: 0.7rem;">+91 00000 00000</span>
+                  <div class="cloud-user-info">
+                    <span id="cloud-user-name" class="cloud-name">Hero</span>
+                    <span id="cloud-user-email" class="cloud-email">you@example.com</span>
+                    <span id="cloud-user-phone" class="cloud-email">+91 00000 00000</span>
                   </div>
                 </div>
                 <button class="btn btn-outline btn-sm" onclick="App.signOut()">Sign Out</button>
@@ -749,7 +749,7 @@
           <h2 class="section-title">Reminders</h2>
         </div>
         <div class="settings-section" style="margin: 0 var(--spacing-md) var(--spacing-lg);">
-          <div class="cloud-sync-card" id="reminders-card" style="padding: var(--spacing-lg) var(--spacing-md);">
+          <div class="cloud-sync-card" id="reminders-card">
             <p class="cloud-desc" id="reminders-status" style="margin-bottom: var(--spacing-md);">
               Set a time on any action and this app will nudge you.
             </p>
@@ -777,7 +777,7 @@
 
 
         <div class="app-footer">
-          <p>Project Human v1.13.1</p>
+          <p>Project Human v2.0.0</p>
           <p>Build Your Character.</p>
         </div>
       </div>
@@ -810,6 +810,6 @@
     <div id="modal-content" class="modal-content" onclick="event.stopPropagation()"></div>
   </div>
 
-  <script type="module" src="app.js?v=1.13.1"></script>
+  <script type="module" src="app.js?v=2.0.0"></script>
 </body>
 </html>
