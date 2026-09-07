@@ -17,7 +17,7 @@ import {
   getDocs,
   onSnapshot,
   writeBatch
-} from './firebase.js?v=1.13.0';
+} from './firebase.js?v=1.13.1';
 
 const App = (() => {
   'use strict';
@@ -729,6 +729,9 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
         return 'Network error. Check your connection and try again.';
       case 'auth/operation-not-allowed':
         return 'Email sign-in is not enabled for this Firebase project yet.';
+      case 'auth/unauthorized-continue-uri':
+      case 'auth/invalid-continue-uri':
+        return 'This app domain is not authorised in Firebase Authentication. Add it under Authentication > Settings > Authorized domains.';
       default:
         return (error && error.message) ? error.message : 'Something went wrong. Please try again.';
     }
@@ -902,7 +905,16 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
 
     clearAuthError();
     try {
-      await sendPasswordResetEmail(auth, email);
+      // Firebase's own reset page dead-ends unless it is given somewhere to
+      // send people afterwards. This adds a "Continue" button back into the
+      // app. It also works when the console refuses to accept a custom action
+      // URL, which is the only way to replace that page outright.
+      // The origin must be one of the project's authorised domains, or
+      // Firebase rejects the whole request with auth/unauthorized-continue-uri.
+      await sendPasswordResetEmail(auth, email, {
+        url: window.location.origin + '/index.html',
+        handleCodeInApp: false
+      });
       // Still not confirming whether the address is registered — that is what
       // stops anyone probing which emails exist — but say plainly that silence
       // means "no account", and point at the spam folder, which is where these
