@@ -4,7 +4,7 @@ import {
   verifyPasswordResetCode,
   confirmPasswordReset,
   applyActionCode
-} from './firebase.js?v=1.13.0';
+} from './firebase.js?v=2.1.0';
 
 /**
  * Firebase's own action handler is an unstyled white page. Pointing the

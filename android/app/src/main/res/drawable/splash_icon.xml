@@ -1,56 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Full app mark (rounded tile + ring + figure) for the launch screen,
-     matching the web splash exactly. -->
+<!-- Full mark for the launch screen: red ground, white letters. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="96dp"
     android:height="96dp"
     android:viewportWidth="512"
     android:viewportHeight="512">
-
-    <path android:pathData="M115,0 L397,0 A115,115 0 0 1 512,115 L512,397 A115,115 0 0 1 397,512 L115,512 A115,115 0 0 1 0,397 L0,115 A115,115 0 0 1 115,0 Z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:type="linear"
-                android:startX="0"
-                android:startY="0"
-                android:endX="512"
-                android:endY="512"
-                android:startColor="#2A1055"
-                android:endColor="#0B0A12" />
-        </aapt:attr>
-    </path>
-
-    <path
-        android:pathData="M256,96 A160,160 0 0 1 256,416 A160,160 0 0 1 256,96"
-        android:strokeWidth="34"
-        android:strokeColor="#FFFFFF"
-        android:strokeAlpha="0.08"
-        android:fillColor="@android:color/transparent" />
-
-    <path
-        android:pathData="M256,96 A160,160 0 0 1 256,416 A160,160 0 0 1 256,96"
-        android:strokeWidth="34"
-        android:strokeLineCap="round"
-        android:trimPathStart="0"
-        android:trimPathEnd="0.75"
-        android:fillColor="@android:color/transparent">
-        <aapt:attr name="android:strokeColor">
-            <gradient
-                android:type="linear"
-                android:startX="96"
-                android:startY="416"
-                android:endX="416"
-                android:endY="96"
-                android:startColor="#A855F7"
-                android:endColor="#FBBF24" />
-        </aapt:attr>
-    </path>
-
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M226,176 A30,30 0 1 1 286,176 A30,30 0 1 1 226,176 Z" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M256,220 L322,330 L286,330 L286,366 L226,366 L226,330 L190,330 Z" />
+    <path android:fillColor="#EC3013" android:pathData="M0,0h512v512h-512z"/>
+        <path android:fillColor="#FFFFFF" android:pathData="M83,151h54v210h-54z M83,151h148v50h-148z M83,243h148v50h-148z M181,151h50v142h-50z M265,151h54v210h-54z M375,151h54v210h-54z M265,230h164v52h-164z"/>
 </vector>

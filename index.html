@@ -19,7 +19,7 @@
   <meta name="twitter:description" content="A real-life RPG progression system. Complete actions, earn XP, level up your life.">
 
   <title>Project Human — Build Your Character</title>
-  <link rel="manifest" href="manifest.json?v=2.0.0">
+  <link rel="manifest" href="manifest.json?v=2.1.0">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="index.css?v=2.0.0">
+  <link rel="stylesheet" href="index.css?v=2.1.0">
   
   <!-- Loading Screen Styles (inline for instant render) -->
   <style>
@@ -52,7 +52,6 @@
     }
     .app-loading-icon {
       margin-bottom: 26px;
-      filter: drop-shadow(0 12px 32px rgba(147, 51, 234, 0.35));
       animation: loadingPulse 2.4s ease-in-out infinite;
     }
     .app-loading-icon .ph-mark { display: block; }
@@ -84,8 +83,8 @@
     .app-loading-spinner {
       width: 24px;
       height: 24px;
-      border: 2.5px solid rgba(168, 85, 247, 0.14);
-      border-top-color: #A855F7;
+      border: 2.5px solid rgba(32, 30, 29, 0.14);
+      border-top-color: #ec3013;
       border-radius: 50%;
       animation: loadingSpin 0.7s linear infinite;
     }
@@ -93,8 +92,8 @@
       .app-loading-icon, .ph-ring-charge, .app-loading-spinner { animation: none; }
     }
     @keyframes loadingPulse {
-      0%, 100% { transform: scale(1);    filter: drop-shadow(0 10px 26px rgba(147, 51, 234, 0.30)); }
-      50%      { transform: scale(1.04); filter: drop-shadow(0 14px 38px rgba(147, 51, 234, 0.50)); }
+      0%, 100% { transform: scale(1); }
+      50%      { transform: scale(1.03); }
     }
     @keyframes loadingSpin {
       to { transform: rotate(360deg); }
@@ -108,21 +107,17 @@
   <!-- App Loading Screen -->
   <div id="app-loading-screen" class="app-loading-screen">
     <div class="app-loading-icon">
-        <svg class="ph-mark" width="92" height="92" viewBox="0 0 512 512" aria-hidden="true">
-          <defs>
-            <linearGradient id="splashBg" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stop-color="#2A1055"/><stop offset="100%" stop-color="#0B0A12"/>
-            </linearGradient>
-            <linearGradient id="splashRing" x1="0" y1="1" x2="1" y2="0">
-              <stop offset="0%" stop-color="#A855F7"/><stop offset="100%" stop-color="#FBBF24"/>
-            </linearGradient>
-          </defs>
-          <rect width="512" height="512" rx="115" fill="url(#splashBg)"/>
-          <circle cx="256" cy="256" r="160" fill="none" stroke="#ffffff" stroke-opacity="0.08" stroke-width="34"/>
-          <circle class="ph-ring-charge" cx="256" cy="256" r="160" fill="none" stroke="url(#splashRing)" stroke-width="34"
-                  stroke-linecap="round" stroke-dasharray="1005" stroke-dashoffset="251" transform="rotate(-90 256 256)"/>
-          <circle cx="256" cy="176" r="30" fill="#ffffff"/>
-          <path d="M256 220 L322 330 H286 V366 H226 V330 H190 Z" fill="#ffffff"/>
+        <svg class="ph-mark" width="80" height="80" viewBox="0 0 512 512" aria-hidden="true">
+          <rect width="512" height="512" fill="#ec3013"/>
+          <g fill="#ffffff">
+            <rect x="83" y="151" width="54" height="210"/>
+            <rect x="83" y="151" width="148" height="50"/>
+            <rect x="83" y="243" width="148" height="50"/>
+            <rect x="181" y="151" width="50" height="142"/>
+            <rect x="265" y="151" width="54" height="210"/>
+            <rect x="375" y="151" width="54" height="210"/>
+            <rect x="265" y="230" width="164" height="52"/>
+          </g>
         </svg>
       </div>
     <h1 class="app-loading-title">PROJECT HUMAN</h1>
@@ -134,21 +129,17 @@
   <div id="auth-overlay" class="auth-overlay">
     <div class="auth-content">
       <div class="auth-logo">
-        <svg class="ph-mark" width="76" height="76" viewBox="0 0 512 512" aria-hidden="true">
-          <defs>
-            <linearGradient id="authBg" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stop-color="#2A1055"/><stop offset="100%" stop-color="#0B0A12"/>
-            </linearGradient>
-            <linearGradient id="authRing" x1="0" y1="1" x2="1" y2="0">
-              <stop offset="0%" stop-color="#A855F7"/><stop offset="100%" stop-color="#FBBF24"/>
-            </linearGradient>
-          </defs>
-          <rect width="512" height="512" rx="115" fill="url(#authBg)"/>
-          <circle cx="256" cy="256" r="160" fill="none" stroke="#ffffff" stroke-opacity="0.08" stroke-width="34"/>
-          <circle class="" cx="256" cy="256" r="160" fill="none" stroke="url(#authRing)" stroke-width="34"
-                  stroke-linecap="round" stroke-dasharray="1005" stroke-dashoffset="251" transform="rotate(-90 256 256)"/>
-          <circle cx="256" cy="176" r="30" fill="#ffffff"/>
-          <path d="M256 220 L322 330 H286 V366 H226 V330 H190 Z" fill="#ffffff"/>
+        <svg class="ph-mark" width="72" height="72" viewBox="0 0 512 512" aria-hidden="true">
+          <rect width="512" height="512" fill="#ec3013"/>
+          <g fill="#ffffff">
+            <rect x="83" y="151" width="54" height="210"/>
+            <rect x="83" y="151" width="148" height="50"/>
+            <rect x="83" y="243" width="148" height="50"/>
+            <rect x="181" y="151" width="50" height="142"/>
+            <rect x="265" y="151" width="54" height="210"/>
+            <rect x="375" y="151" width="54" height="210"/>
+            <rect x="265" y="230" width="164" height="52"/>
+          </g>
         </svg>
       </div>
       <h1 class="auth-title">PROJECT <span class="highlight">HUMAN</span></h1>
@@ -777,7 +768,7 @@
 
 
         <div class="app-footer">
-          <p>Project Human v2.0.0</p>
+          <p>Project Human v2.1.0</p>
           <p>Build Your Character.</p>
         </div>
       </div>
@@ -810,6 +801,6 @@
     <div id="modal-content" class="modal-content" onclick="event.stopPropagation()"></div>
   </div>
 
-  <script type="module" src="app.js?v=2.0.0"></script>
+  <script type="module" src="app.js?v=2.1.0"></script>
 </body>
 </html>

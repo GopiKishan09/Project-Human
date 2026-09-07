@@ -1,56 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Project Human "Ascend" mark: progress ring + rising figure.
-     Drawn in the web logo's 512 space, then scaled into the adaptive
-     icon's inner 72dp safe zone. -->
+<!-- Project Human mark: "PH" as geometry, scaled into the adaptive icon's
+     inner 72dp safe zone. Drawn in the web mark's 512 space. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="512"
     android:viewportHeight="512">
-
     <group
         android:pivotX="256"
         android:pivotY="256"
-        android:scaleX="0.88"
-        android:scaleY="0.88">
-
-        <!-- Unfilled track -->
-        <path
-            android:pathData="M256,96 A160,160 0 0 1 256,416 A160,160 0 0 1 256,96"
-            android:strokeWidth="34"
-            android:strokeColor="#FFFFFF"
-            android:strokeAlpha="0.08"
-            android:fillColor="@android:color/transparent" />
-
-        <!-- Filled arc: three quarters, violet into gold -->
-        <path
-            android:pathData="M256,96 A160,160 0 0 1 256,416 A160,160 0 0 1 256,96"
-            android:strokeWidth="34"
-            android:strokeLineCap="round"
-            android:trimPathStart="0"
-            android:trimPathEnd="0.75"
-            android:fillColor="@android:color/transparent">
-            <aapt:attr name="android:strokeColor">
-                <gradient
-                    android:type="linear"
-                    android:startX="96"
-                    android:startY="416"
-                    android:endX="416"
-                    android:endY="96"
-                    android:startColor="#A855F7"
-                    android:endColor="#FBBF24" />
-            </aapt:attr>
-        </path>
-
-        <!-- Head -->
-        <path
-            android:fillColor="#FFFFFF"
-            android:pathData="M226,176 A30,30 0 1 1 286,176 A30,30 0 1 1 226,176 Z" />
-
-        <!-- Rising body -->
-        <path
-            android:fillColor="#FFFFFF"
-            android:pathData="M256,220 L322,330 L286,330 L286,366 L226,366 L226,330 L190,330 Z" />
+        android:scaleX="0.86"
+        android:scaleY="0.86">
+        <path android:fillColor="#FFFFFF" android:pathData="M83,151h54v210h-54z M83,151h148v50h-148z M83,243h148v50h-148z M181,151h50v142h-50z M265,151h54v210h-54z M375,151h54v210h-54z M265,230h164v52h-164z"/>
     </group>
 </vector>

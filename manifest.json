@@ -6,10 +6,14 @@
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#0B0A12",
-  "theme_color": "#0B0A12",
+  "background_color": "#f3f2f2",
+  "theme_color": "#f3f2f2",
   "orientation": "portrait",
-  "categories": ["productivity", "lifestyle", "health"],
+  "categories": [
+    "productivity",
+    "lifestyle",
+    "health"
+  ],
   "icons": [
     {
       "src": "icons/icon.svg",
@@ -47,13 +51,23 @@
       "name": "Today",
       "short_name": "Today",
       "url": "./index.html?tab=today",
-      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
       "name": "Missions",
       "short_name": "Missions",
       "url": "./index.html?tab=missions",
-      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }

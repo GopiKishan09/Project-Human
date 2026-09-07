@@ -42,11 +42,11 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         // Match the app theme colors
-        window.statusBarColor = Color.parseColor("#0B0A12")
-        window.navigationBarColor = Color.parseColor("#0B0A12")
+        window.statusBarColor = Color.parseColor("#F3F2F2")
+        window.navigationBarColor = Color.parseColor("#F3F2F2")
 
         val rootLayout = FrameLayout(this).apply {
-            setBackgroundColor(Color.parseColor("#0B0A12"))
+            setBackgroundColor(Color.parseColor("#F3F2F2"))
         }
 
         // ── WebView (behind the loading overlay) ──
@@ -55,7 +55,7 @@ class MainActivity : AppCompatActivity() {
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT
             )
-            setBackgroundColor(Color.parseColor("#0B0A12"))
+            setBackgroundColor(Color.parseColor("#F3F2F2"))
         }
         rootLayout.addView(webView)
 
@@ -65,7 +65,7 @@ class MainActivity : AppCompatActivity() {
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT
             )
-            setBackgroundColor(Color.parseColor("#0B0A12"))
+            setBackgroundColor(Color.parseColor("#F3F2F2"))
         }
 
         val centerContent = LinearLayout(this).apply {
@@ -101,7 +101,7 @@ class MainActivity : AppCompatActivity() {
         // App title
         val titleView = TextView(this).apply {
             text = "PROJECT HUMAN"
-            setTextColor(Color.WHITE)
+            setTextColor(Color.parseColor("#201E1D"))
             textSize = 22f
             typeface = Typeface.DEFAULT_BOLD
             letterSpacing = 0.2f
@@ -118,7 +118,7 @@ class MainActivity : AppCompatActivity() {
         // Subtitle
         val subtitleView = TextView(this).apply {
             text = "Build Your Character"
-            setTextColor(Color.parseColor("#A5A8B3"))
+            setTextColor(Color.parseColor("#605D5D"))
             textSize = 14f
             gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(
@@ -137,7 +137,7 @@ class MainActivity : AppCompatActivity() {
             }
             isIndeterminate = true
             indeterminateTintList = android.content.res.ColorStateList.valueOf(
-                Color.parseColor("#A855F7")
+                Color.parseColor("#EC3013")
             )
         }
 
