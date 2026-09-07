@@ -17,7 +17,7 @@ import {
   getDocs,
   onSnapshot,
   writeBatch
-} from './firebase.js?v=1.12.1';
+} from './firebase.js?v=1.12.2';
 
 const App = (() => {
   'use strict';
@@ -903,8 +903,15 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     clearAuthError();
     try {
       await sendPasswordResetEmail(auth, email);
-      // Deliberately not confirming whether the address is registered.
-      setAuthNotice(`If ${email} has an account, a reset link is on its way.`);
+      // Still not confirming whether the address is registered — that is what
+      // stops anyone probing which emails exist — but say plainly that silence
+      // means "no account", and point at the spam folder, which is where these
+      // land more often than not.
+      setAuthNotice(
+        `If ${email} has an account, the reset link is on its way — check your spam folder too. ` +
+        'Nothing arriving usually means no account uses this email, or it was created with Google sign-in, ' +
+        'which has no password to reset.'
+      );
     } catch (e) {
       logAuthError('Password reset failed', e);
       setAuthError(describeAuthError(e));
