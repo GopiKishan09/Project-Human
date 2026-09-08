@@ -44,11 +44,29 @@ assert('Pending sign-up phone is persisted', appJs.includes('STORAGE_KEYS.pendin
 assert('Sign-up phone reaches the profile write',
   /const signupPhone = getPendingSignupPhone\(\);[\s\S]{0,120}state\.profile\.phone = signupPhone/.test(appJs));
 
+// Haptics and touch feedback.
+assert('Single haptic vocabulary', appJs.includes('HAPTIC_PATTERNS') && appJs.includes('function haptic('));
+assert('No raw vibrate calls outside the helper',
+  (appJs.match(/navigator\.vibrate/g) || []).length <= 2);
+assert('Tap feedback armed at init', /function init\(\)[\s\S]*initTapFeedback\(\)/.test(appJs));
+assert('Data export/reset removed', !appJs.includes('function exportData') && !appJs.includes('function executeReset'));
+assert('Data export/reset buttons removed',
+  !html.includes('App.exportData') && !html.includes('App.confirmReset'));
+
 const css = readFileSync('index.css', 'utf8');
 assert('FAB base styles defined', /\.fab\s*\{[\s\S]*position:\s*fixed/.test(css));
 assert('border-color token defined', css.includes('--border-color:'));
 assert('Modal overlay styles defined', /\.modal-overlay\s*\{[\s\S]*position:\s*fixed/.test(css));
 assert('Button primary styles defined', /\.btn-primary\s*\{/.test(css));
+
+// Motion: compositor-only properties, so the app keeps pace with 120/144Hz panels.
+assert('Ripple keyframes defined', css.includes('@keyframes tap-ripple-out'));
+assert('Press feedback defined', /\.btn:active[\s\S]{0,400}scale\(0\.972\)/.test(css));
+assert('Shake keyframes defined', css.includes('@keyframes shake'));
+assert('Real spring easing', css.includes('--ease-spring: cubic-bezier(0.34, 1.56'));
+assert('No transition:all left', !/transition:\s*all\s/.test(css));
+assert('Reduced motion disables the ripple',
+  /prefers-reduced-motion[\s\S]*\.tap-ripple \{ display: none/.test(css));
 
 const failed = checks.filter(c => !c.pass);
 checks.forEach(c => console.log(`${c.pass ? 'PASS' : 'FAIL'}: ${c.name}`));

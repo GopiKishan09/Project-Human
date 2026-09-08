@@ -721,6 +721,16 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     if (!el) return;
     el.textContent = message || '';
     el.style.display = message ? 'block' : 'none';
+    if (!message) return;
+    haptic('error');
+    // A refused form should flinch, so the eye lands on the reason.
+    const card = el.closest('.auth-actions') || el.parentElement;
+    if (card && !prefersReducedMotion()) {
+      card.classList.remove('shake');
+      void card.offsetWidth;
+      card.classList.add('shake');
+      setTimeout(() => card.classList.remove('shake'), 500);
+    }
   }
 
   function clearAuthError() {
@@ -1599,6 +1609,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     document.getElementById('achievement-popup-name').textContent = ach.name;
     document.getElementById('achievement-popup-desc').textContent = ach.desc;
     overlay.classList.add('show');
+    haptic('achievement');
     refreshIcons();
     setTimeout(() => overlay.classList.remove('show'), 3000);
   }
@@ -1633,6 +1644,10 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   // Toast
   // ---------------------------------------------------------------------------
   function showToast(message, type = 'default', undoCallback = null) {
+    // The toast is the app's voice — let it land in the hand as well.
+    if (type === 'error') haptic('error');
+    else if (type === 'success') haptic('success');
+
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
     toast.className = `toast ${type}-toast`;
@@ -1646,6 +1661,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       undoBtn.textContent = 'Undo';
       undoBtn.onclick = (e) => {
         e.stopPropagation();
+        haptic('undo');
         undoCallback();
         toast.classList.remove('show');
         setTimeout(() => toast.remove(), 300);
@@ -1672,6 +1688,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     content.innerHTML = html;
     overlay.classList.add('show');
     document.body.classList.add('modal-open');
+    haptic('open');
     refreshIcons();
 
     // Focus the first real field so the keyboard opens straight onto it.
@@ -1681,6 +1698,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
 
   function closeModal() {
     const overlay = document.getElementById('modal-overlay');
+    if (overlay.classList.contains('show')) haptic('close');
     overlay.classList.remove('show');
     document.body.classList.remove('modal-open');
     // Content resets after transition ends
@@ -1751,7 +1769,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       refreshIcons();
     });
 
-    try { navigator.vibrate && navigator.vibrate(10); } catch(e) {}
+    haptic('nav');
   }
 
   // ---------------------------------------------------------------------------
@@ -1775,11 +1793,25 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     return 'Legend';
   }
 
+  /**
+   * Fills a progress bar.
+   *
+   * Animating width relayouts the bar and everything beside it on every one
+   * of the ~46 frames a 320ms transition takes at 144Hz. scaleX is a
+   * compositor-only property: the browser hands the whole thing to the GPU
+   * and the main thread stays free, so the fill is smooth at any refresh
+   * rate. The bar is laid out full width once and squeezed from the left.
+   */
+  function setBarFill(el, ratio) {
+    if (!el) return;
+    el.style.setProperty('--fill', Math.max(0, Math.min(1, ratio)).toFixed(4));
+  }
+
   function renderStatItem(idPrefix, statKey, statXp) {
     const levelInfo = getLevelProgress(statXp);
     const fillEl = document.getElementById(`${idPrefix}-${statKey}-fill`);
     const valEl = document.getElementById(`${idPrefix}-${statKey}-val`);
-    if (fillEl) fillEl.style.width = (levelInfo.progress * 100) + '%';
+    setBarFill(fillEl, levelInfo.progress);
     if (valEl) valEl.innerHTML = `Lv. ${levelInfo.level}<br>${Math.round(statXp)} XP`;
   }
 
@@ -1887,15 +1919,104 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
 
+  // ---------------------------------------------------------------------------
+  // Haptics
+  // ---------------------------------------------------------------------------
+  /**
+   * One vocabulary for the whole app, so a tap always feels like a tap and a
+   * reward always feels like a reward. Light tick for touches, a firmer double
+   * for state changes, rising patterns for anything earned.
+   *
+   * Android delivers these through the Vibration API inside the WebView. iOS
+   * Safari has no support at all and desktop browsers ignore it, so every call
+   * has to be optional — never gate behaviour on it.
+   */
+  const HAPTIC_PATTERNS = {
+    tap: 8,
+    nav: 12,
+    select: 15,
+    open: 10,
+    close: 8,
+    toggle: [0, 10, 35, 16],
+    undo: [12, 45, 12],
+    success: [18, 32, 26],
+    warning: [26, 50, 26],
+    error: [40, 55, 40],
+    remove: [34, 46, 34],
+    levelUp: [50, 30, 50, 30, 90],
+    achievement: [22, 28, 22, 28, 70],
+    victory: [30, 35, 30, 35, 45, 35, 90],
+    streak: [16, 24, 16, 24, 40],
+    // Completing an action — the heavier the work, the heavier the reward.
+    easy: 12,
+    medium: 18,
+    hard: [22, 40, 22],
+    legendary: [30, 40, 30, 40, 60]
+  };
+
+  function haptic(kind) {
+    const pattern = HAPTIC_PATTERNS[kind];
+    if (pattern === undefined) return;
+    try { navigator.vibrate && navigator.vibrate(pattern); } catch (e) { /* unsupported */ }
+  }
+
   /** Heavier feedback for heavier work. */
   function celebrateHaptics(difficulty) {
-    const patterns = {
-      easy: 12,
-      medium: 18,
-      hard: [22, 40, 22],
-      legendary: [30, 40, 30, 40, 60]
-    };
-    try { navigator.vibrate && navigator.vibrate(patterns[difficulty] || 18); } catch (e) { /* unsupported */ }
+    haptic(HAPTIC_PATTERNS[difficulty] !== undefined ? difficulty : 'medium');
+  }
+
+  /**
+   * Blanket tap feedback. Wiring every one of the app's handlers by hand would
+   * miss the ones rendered from template strings, so listen once at the
+   * document instead and let anything that reads as a control tick on touch.
+   * Fires on pointerdown, not click, so the tick lands under the finger rather
+   * than after the action. Handlers that give their own stronger feedback
+   * simply replace this one — vibrate() cancels whatever is already running.
+   */
+  const TAPPABLE = [
+    'button', '[onclick]', '.nav-item', '.action-item', '.mission-card',
+    '.progress-mission-card', '.archetype-card', '.diff-option',
+    '.recurring-option', '.icon-option', '.stat-toggle', '.auth-tab',
+    '.achievement-badge', '.chain-day'
+  ].join(',');
+
+  function initTapFeedback() {
+    document.addEventListener('pointerdown', (e) => {
+      const target = e.target && e.target.closest && e.target.closest(TAPPABLE);
+      if (!target || target.disabled) return;
+      if (target.dataset && target.dataset.haptic === 'none') return;
+      haptic('tap');
+      spawnRipple(target, e);
+    }, { passive: true });
+  }
+
+  /**
+   * A press needs to be visible as well as felt. One ink ripple from the
+   * contact point, cleaned up when it finishes.
+   */
+  function spawnRipple(el, event) {
+    if (prefersReducedMotion()) return;
+    if (el.classList.contains('no-ripple')) return;
+
+    const rect = el.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+
+    // The ripple is absolutely positioned, so the host has to establish a
+    // containing block and clip — but only ever add this, never restyle.
+    const computed = getComputedStyle(el);
+    if (computed.position === 'static') el.style.position = 'relative';
+    el.style.overflow = 'hidden';
+
+    const ripple = document.createElement('span');
+    ripple.className = 'tap-ripple';
+    const size = Math.max(rect.width, rect.height) * 2;
+    ripple.style.width = ripple.style.height = `${size}px`;
+    ripple.style.left = `${(event.clientX ?? rect.left + rect.width / 2) - rect.left - size / 2}px`;
+    ripple.style.top = `${(event.clientY ?? rect.top + rect.height / 2) - rect.top - size / 2}px`;
+
+    el.appendChild(ripple);
+    ripple.addEventListener('animationend', () => ripple.remove(), { once: true });
+    setTimeout(() => ripple.remove(), 800);
   }
 
   function renderTodayScreen() {
@@ -1956,7 +2077,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     }
     document.getElementById('xp-bar-next').textContent = levelInfo.xpNeeded;
     document.getElementById('stat-completion').classList.toggle('is-perfect', completionPct === 100);
-    document.getElementById('xp-bar-fill').style.width = (levelInfo.progress * 100) + '%';
+    setBarFill(document.getElementById('xp-bar-fill'), levelInfo.progress);
 
     // Update circular level ring
     const xpRing = document.getElementById('xp-ring-fill');
@@ -2067,7 +2188,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
         <span class="mission-card-percent">${Math.round(progress)}%</span>
         <div class="mission-card-progress">
           <div class="mission-card-progress-bar">
-            <div class="mission-card-progress-fill" style="width: ${progress}%"></div>
+            <div class="mission-card-progress-fill" style="--fill: ${(progress / 100).toFixed(4)}"></div>
           </div>
           <div class="mission-card-stats">
             <span>${completedToday}/${todayActions.length} today</span>
@@ -2121,7 +2242,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
         </div>
       </div>
       <div class="mission-progress-bar-large">
-        <div class="mission-progress-bar-large-fill" style="width: ${completion}%"></div>
+        <div class="mission-progress-bar-large-fill" style="--fill: ${(completion / 100).toFixed(4)}"></div>
       </div>`;
 
     // Content: uncategorized actions + attribute sections
@@ -2239,13 +2360,13 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
 
     // Completion bars
     document.getElementById('daily-completion').textContent = dailyPct + '%';
-    document.getElementById('daily-bar').style.width = dailyPct + '%';
+    setBarFill(document.getElementById('daily-bar'), dailyPct / 100);
     document.getElementById('weekly-completion').textContent = weeklyPct + '%';
-    document.getElementById('weekly-bar').style.width = weeklyPct + '%';
+    setBarFill(document.getElementById('weekly-bar'), weeklyPct / 100);
     document.getElementById('monthly-completion').textContent = monthlyPct + '%';
-    document.getElementById('monthly-bar').style.width = monthlyPct + '%';
+    setBarFill(document.getElementById('monthly-bar'), monthlyPct / 100);
     document.getElementById('yearly-completion').textContent = yearlyPct + '%';
-    document.getElementById('yearly-bar').style.width = yearlyPct + '%';
+    setBarFill(document.getElementById('yearly-bar'), yearlyPct / 100);
 
     // Target Completion Analysis (Progress Screen Target Completion Card)
     const gap = monthlyPct - 80;
@@ -2310,7 +2431,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
           <span>${progress}%</span>
         </div>
         <div class="mission-card-progress-bar">
-          <div class="mission-card-progress-fill" style="width: ${progress}%"></div>
+          <div class="mission-card-progress-fill" style="--fill: ${(progress / 100).toFixed(4)}"></div>
         </div>
         <div class="mission-card-stats">
           <span>${mActions.length} actions</span>
@@ -2561,6 +2682,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   }
 
   function executeDeleteMission(missionId) {
+    haptic('remove');
     if (isFirebaseEnabled && auth.currentUser) {
       const actionIds = state.actions.filter(a => a.missionId === missionId).map(a => a.id);
       state.actions = state.actions.filter(a => a.missionId !== missionId);
@@ -2682,6 +2804,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   }
 
   function executeDeleteAttribute(attributeId) {
+    haptic('remove');
     if (isFirebaseEnabled && auth.currentUser) {
       const actionIds = state.actions.filter(a => a.attributeId === attributeId).map(a => a.id);
       state.actions = state.actions.filter(a => a.attributeId !== attributeId);
@@ -2898,6 +3021,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   }
 
   function executeDeleteAction(actionId) {
+    haptic('remove');
     if (isFirebaseEnabled && auth.currentUser) {
       state.completions = state.completions.filter(c => c.actionId !== actionId);
       state.actions = state.actions.filter(a => a.id !== actionId);
@@ -2924,7 +3048,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
 
     // Haptic feedback — scaled to the difficulty being cleared
     if (existing) {
-      try { navigator.vibrate && navigator.vibrate(10); } catch (e) { /* unsupported */ }
+      haptic('undo');
     } else {
       celebrateHaptics(action.difficulty);
     }
@@ -2975,8 +3099,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       const levelAfter = getLevelFromXp(state.profile.totalXp);
       if (levelAfter > levelBefore) {
         showLevelUp(levelAfter, levelBefore);
-        // Haptic for level up
-        try { navigator.vibrate && navigator.vibrate([50, 30, 50]); } catch(e) {}
+        haptic('levelUp');
       }
 
       // Achievement check
@@ -3077,8 +3200,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
         step2.classList.remove('step-entering');
       });
     }, 250);
-    // Haptic
-    try { navigator.vibrate && navigator.vibrate(10); } catch(e) {}
+    haptic('select');
   }
 
   function selectArchetype(type) {
@@ -3139,8 +3261,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       step3.classList.add('step-entering');
       requestAnimationFrame(() => step3.classList.remove('step-entering'));
     }, 250);
-    // Haptic
-    try { navigator.vibrate && navigator.vibrate([30, 20, 30]); } catch(e) {}
+    haptic('success');
   }
 
   function dismissOnboarding() {
@@ -3395,7 +3516,9 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     document.getElementById('victory-xp-earned').textContent = `+${xpGained}`;
     document.getElementById('victory-streak').textContent = state.profile.currentStreak;
 
-    document.getElementById('daily-victory-overlay').classList.add('show'); refreshIcons();
+    document.getElementById('daily-victory-overlay').classList.add('show');
+    haptic('victory');
+    refreshIcons();
   }
 
   function dismissDailyVictory() {
@@ -3424,6 +3547,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   // Difficulty & Recurring Selectors
   // ---------------------------------------------------------------------------
   function selectDifficulty(diff) {
+    if (selectedDifficulty !== diff) haptic('select');
     selectedDifficulty = diff;
     document.querySelectorAll('#difficulty-selector .diff-option').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.diff === diff);
@@ -3431,6 +3555,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   }
 
   function selectRecurring(type) {
+    if (selectedRecurring !== type) haptic('select');
     selectedRecurring = type;
     document.querySelectorAll('#recurring-selector .recurring-option').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.recurring === type);
@@ -3438,6 +3563,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   }
 
   function selectIcon(icon) {
+    if (selectedIcon !== icon) haptic('select');
     selectedIcon = icon;
     document.querySelectorAll('#icon-picker .icon-option').forEach(btn => {
       btn.classList.toggle('active', btn.textContent === icon);
@@ -3475,12 +3601,14 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     // A modal sits on top of everything else.
     if (isOpen('modal-overlay')) { closeModal(); return true; }
 
+    // Everything below unwinds a layer, so acknowledge the press in the hand.
+    const unwind = fn => { haptic('close'); fn(); return true; };
+
     // Reward overlays are dismissible.
-    if (isOpen('daily-victory-overlay')) { dismissDailyVictory(); return true; }
-    if (isOpen('level-up-overlay')) { dismissLevelUp(); return true; }
+    if (isOpen('daily-victory-overlay')) return unwind(dismissDailyVictory);
+    if (isOpen('level-up-overlay')) return unwind(dismissLevelUp);
     if (isOpen('achievement-overlay')) {
-      document.getElementById('achievement-overlay').classList.remove('show');
-      return true;
+      return unwind(() => document.getElementById('achievement-overlay').classList.remove('show'));
     }
 
     // Before the app is usable — sign-in, onboarding, still loading — swallow
@@ -3491,10 +3619,10 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     if (getAppState() !== 'READY') return true;
 
     // Inside a mission, back returns to the mission list.
-    if (currentMissionId) { goBackToMissions(); return true; }
+    if (currentMissionId) return unwind(goBackToMissions);
 
     // From any other tab, back returns to Today.
-    if (currentTab !== 'today') { switchTab('today'); return true; }
+    if (currentTab !== 'today') { switchTab('today'); return true; }  // switchTab ticks
 
     return false;
   }
@@ -3604,6 +3732,7 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     // Back must unwind the app, not leave it, in the browser and the installed
     // PWA too — not only in the Android shell, which asks the page directly.
     initBackGuard();
+    initTapFeedback();
 
     // Register online/offline event listeners
     window.addEventListener('online', updateConnectivityStatus);

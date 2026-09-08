@@ -85,7 +85,9 @@
   --duration-normal: 200ms;
   --duration-slow: 320ms;
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
-  --ease-spring: cubic-bezier(0.2, 0, 0, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-emphasis: cubic-bezier(0.2, 0, 0, 1);
+  --duration-tap: 90ms;
 
   --nav-height: 52px;
 }
@@ -390,7 +392,6 @@ h1, h2, h3, h4 {
 .xp-bar-fill {
   height: 100%;
   background: var(--color-text);
-  transition: width var(--duration-slow) var(--ease-out);
 }
 .xp-info { font-size: 0.72rem; color: var(--color-neutral-700); }
 
@@ -495,7 +496,6 @@ h1, h2, h3, h4 {
 .stat-fill {
   height: 100%;
   background: var(--color-text);
-  transition: width var(--duration-slow) var(--ease-out);
 }
 /* One ink colour across the ramp keeps the page from turning into a
    fruit salad; the accent is reserved for what needs attention. */
@@ -703,7 +703,6 @@ h1, h2, h3, h4 {
 .mission-card-progress-fill {
   height: 100%;
   background: var(--color-text);
-  transition: width var(--duration-slow) var(--ease-out);
 }
 .mission-card-stats {
   display: flex;
@@ -874,7 +873,7 @@ h1, h2, h3, h4 {
 .completion-bar-label { color: var(--color-text); }
 .completion-bar-value { font-size: 0.8rem; font-weight: 800; }
 .completion-bar-track { height: 7px; background: var(--color-neutral-300); overflow: hidden; }
-.completion-bar-fill { height: 100%; background: var(--color-text); transition: width var(--duration-slow) var(--ease-out); }
+.completion-bar-fill { height: 100%; background: var(--color-text); }
 .completion-bar-fill.bar-daily,
 .completion-bar-fill.bar-weekly,
 .completion-bar-fill.bar-monthly,
@@ -1145,7 +1144,10 @@ textarea.form-input { min-height: 74px; resize: vertical; }
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-neutral-700);
-  transition: all var(--duration-fast) var(--ease-out);
+  transition: background var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out),
+              transform var(--duration-tap) var(--ease-out);
 }
 .diff-option small { font-size: 0.58rem; opacity: 0.8; }
 .stat-pill-btn i, .stat-pill-btn svg { width: 13px; height: 13px; }
@@ -1369,7 +1371,10 @@ textarea.form-input { min-height: 74px; resize: vertical; }
   padding: var(--space-3);
   border: 1px solid var(--border-hover);
   cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-out);
+  transition: background var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out),
+              transform var(--duration-tap) var(--ease-out);
 }
 .archetype-card.active { border-color: var(--color-accent); background: var(--color-accent); color: #fff; }
 .archetype-card.active .archetype-desc { color: rgba(255, 255, 255, 0.85); }
@@ -1642,4 +1647,147 @@ select,
 .progress-mission-header i,
 .progress-mission-header svg {
   display: none;
+}
+
+/* ── Touch feedback & motion ───────────────────────────────────────────────
+   Everything here animates transform or opacity only. Those two are the
+   properties the compositor can run on its own thread, so the app keeps pace
+   with whatever the panel refreshes at — 60Hz, 120Hz, 144Hz — instead of
+   being pinned to the main thread by layout work on every frame. Anything
+   that animates width, top or height belongs somewhere else. */
+
+/* A press should answer instantly. --duration-tap is deliberately shorter
+   than --duration-fast: past roughly 100ms the response stops reading as
+   part of the same gesture. */
+.btn,
+.fab,
+.nav-item,
+.action-item,
+.mission-card,
+.progress-mission-card,
+.icon-option,
+.archetype-card,
+.auth-tab,
+.achievement-badge,
+.modal-close,
+.undo-btn {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.btn,
+.fab,
+.mission-card,
+.progress-mission-card,
+.icon-option,
+.archetype-card,
+.achievement-badge {
+  transition: background var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out),
+              transform var(--duration-tap) var(--ease-out);
+}
+
+/* Overrides .btn:active's translateY above — one press language everywhere. */
+.btn:active,
+.fab:active,
+.mission-card:active,
+.progress-mission-card:active,
+.icon-option:active,
+.archetype-card:active,
+.achievement-badge:active {
+  transform: scale(0.972);
+}
+.action-item:active,
+.nav-item:active { transform: scale(0.988); }
+.action-item,
+.nav-item { transition: background var(--duration-fast) var(--ease-out),
+                        transform var(--duration-tap) var(--ease-out); }
+
+/* Ink ripple from the contact point. Painted by app.js on pointerdown so it
+   reaches controls rendered from template strings too. */
+.tap-ripple {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  background: currentColor;
+  opacity: 0.16;
+  transform: scale(0);
+  will-change: transform, opacity;
+  animation: tap-ripple-out 560ms var(--ease-emphasis) forwards;
+}
+@keyframes tap-ripple-out {
+  to { transform: scale(1); opacity: 0; }
+}
+
+/* A refused form flinches, so the eye lands on the reason. */
+@keyframes shake {
+  10%, 90% { transform: translate3d(-2px, 0, 0); }
+  20%, 80% { transform: translate3d(4px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-7px, 0, 0); }
+  40%, 60% { transform: translate3d(7px, 0, 0); }
+}
+.shake { animation: shake 460ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
+
+/* Clearing an action should feel like a stamp coming down. */
+@keyframes check-stamp {
+  0%   { transform: scale(0.4); }
+  55%  { transform: scale(1.22); }
+  100% { transform: scale(1); }
+}
+.action-item.completed .action-checkbox,
+.action-item.done .action-checkbox { animation: check-stamp 320ms var(--ease-spring) both; }
+
+/* Screens arrive rather than cut. */
+@keyframes screen-in {
+  from { opacity: 0; transform: translate3d(0, 10px, 0); }
+  to   { opacity: 1; transform: none; }
+}
+.screen.active > .screen-scroll { animation: screen-in var(--duration-normal) var(--ease-emphasis) both; }
+
+/* The sheet rides a spring on the way in; overshoot is what sells the weight. */
+.modal-content {
+  will-change: transform;
+  transition: transform var(--duration-slow) var(--ease-spring);
+}
+
+/* Toasts, XP pops and reward overlays are pure transform/opacity already —
+   promote them so the first frame is never the one that stutters. */
+.toast, .xp-popup, .modal-overlay, .fab { will-change: transform, opacity; }
+
+/* Long lists scroll on their own layer and stop dragging the page with them. */
+.screen-scroll {
+  overscroll-behavior-y: contain;
+  will-change: scroll-position;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tap-ripple { display: none; }
+  .btn:active,
+  .fab:active,
+  .action-item:active,
+  .nav-item:active,
+  .mission-card:active,
+  .progress-mission-card:active,
+  .icon-option:active,
+  .archetype-card:active,
+  .achievement-badge:active { transform: none; }
+}
+
+/* ── Progress bars ─────────────────────────────────────────────────────────
+   Every fill is laid out at full width once and squeezed from the left by a
+   --fill ratio that app.js sets (0..1). Transitioning width would relayout
+   the bar and its neighbours on each of the ~46 frames a 320ms fill takes at
+   144Hz; scaleX runs on the compositor and costs the main thread nothing. */
+
+.xp-bar-fill,
+.stat-fill,
+.mission-card-progress-fill,
+.mission-progress-bar-large-fill,
+.completion-bar-fill {
+  width: 100%;
+  transform-origin: left center;
+  transform: scaleX(var(--fill, 0));
+  transition: transform var(--duration-slow) var(--ease-emphasis);
+  will-change: transform;
 }
