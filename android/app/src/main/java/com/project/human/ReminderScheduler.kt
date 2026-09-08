@@ -7,6 +7,8 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
+import android.net.Uri
 import android.graphics.Color
 import android.os.Build
 import android.util.Log
@@ -29,7 +31,10 @@ object ReminderScheduler {
     private const val PREFS = "ph_reminders"
     private const val KEY_PAYLOAD = "payload"
 
-    const val CHANNEL_ID = "action_reminders"
+    // Bumped when the channel's own settings change: Android freezes a
+    // channel at creation, so an existing install keeps the old silent one
+    // forever unless a new id is used.
+    const val CHANNEL_ID = "action_reminders_v2"
     const val EXTRA_ACTION_ID = "action_id"
     const val EXTRA_TITLE = "title"
     const val EXTRA_BODY = "body"
@@ -165,6 +170,10 @@ object ReminderScheduler {
 
     // ── Notification channel ─────────────────────────────────────────────
 
+    /** The app's own chime, as a resource Uri the notification system can play. */
+    private fun chimeUri(context: Context): Uri =
+        Uri.parse("android.resource://" + context.packageName + "/" + R.raw.reminder_chime)
+
     fun ensureChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -179,7 +188,20 @@ object ReminderScheduler {
             enableLights(true)
             lightColor = Color.parseColor("#9333EA")
             enableVibration(true)
+            vibrationPattern = longArrayOf(0, 60, 90, 40)
             setShowBadge(true)
+
+            // A reminder that arrives in silence is a reminder that gets
+            // missed. Set the sound explicitly rather than trusting the
+            // channel default, and mark it as a notification stream so Do Not
+            // Disturb and the volume keys treat it correctly.
+            setSound(
+                chimeUri(context),
+                AudioAttributes.Builder()
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                    .build()
+            )
         }
         nm.createNotificationChannel(channel)
     }
@@ -208,6 +230,14 @@ object ReminderScheduler {
             .setContentIntent(contentIntent)
             .setAutoCancel(true)
             .apply {
+                // Pre-O has no channels, so the sound and vibration have to be
+                // set on the notification itself or it arrives silent.
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+                    @Suppress("DEPRECATION")
+                    setSound(chimeUri(context))
+                    @Suppress("DEPRECATION")
+                    setVibrate(longArrayOf(0, 60, 90, 40))
+                }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                     setColor(Color.parseColor("#9333EA"))
                 }
