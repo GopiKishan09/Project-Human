@@ -1974,16 +1974,26 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
    * simply replace this one — vibrate() cancels whatever is already running.
    */
   const TAPPABLE = [
-    'button', '[onclick]', '.nav-item', '.action-item', '.mission-card',
+    'button', '.nav-item', '.action-item', '.mission-card',
     '.progress-mission-card', '.archetype-card', '.diff-option',
     '.recurring-option', '.icon-option', '.stat-toggle', '.auth-tab',
     '.achievement-badge', '.chain-day'
   ].join(',');
 
+  /**
+   * Some elements carry an onclick only to catch or stop a click — the modal
+   * overlay dismisses on one, the sheet inside it stops propagation. Treating
+   * those as controls painted a viewport-sized ripple over the whole sheet and
+   * clipped the sheet's own scrolling. Controls are named explicitly above;
+   * these are named here so they can never be mistaken for one.
+   */
+  const NOT_TAPPABLE = '#modal-overlay, #modal-content, .screen, .screen-scroll, .modal-overlay, .modal-content';
+
   function initTapFeedback() {
     document.addEventListener('pointerdown', (e) => {
       const target = e.target && e.target.closest && e.target.closest(TAPPABLE);
       if (!target || target.disabled) return;
+      if (target.matches(NOT_TAPPABLE)) return;
       if (target.dataset && target.dataset.haptic === 'none') return;
       haptic('tap');
       spawnRipple(target, e);
@@ -2001,11 +2011,20 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     const rect = el.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
 
+    // A ripple has to clip to its host, and clipping anything that scrolls
+    // would kill the scroll. Nothing that large reads as a control anyway, so
+    // leave both alone rather than trying to restore the styles afterwards.
+    const computed = getComputedStyle(el);
+    const scrolls = el.scrollHeight > el.clientHeight + 1 ||
+                    el.scrollWidth > el.clientWidth + 1 ||
+                    /auto|scroll/.test(computed.overflowY + computed.overflowX);
+    if (scrolls) return;
+    if (rect.height > window.innerHeight * 0.6 || rect.width > window.innerWidth * 1.01) return;
+
     // The ripple is absolutely positioned, so the host has to establish a
     // containing block and clip — but only ever add this, never restyle.
-    const computed = getComputedStyle(el);
     if (computed.position === 'static') el.style.position = 'relative';
-    el.style.overflow = 'hidden';
+    if (computed.overflow === 'visible') el.style.overflow = 'hidden';
 
     const ripple = document.createElement('span');
     ripple.className = 'tap-ripple';

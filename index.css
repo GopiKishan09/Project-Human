@@ -1745,15 +1745,17 @@ select,
 }
 .screen.active > .screen-scroll { animation: screen-in var(--duration-normal) var(--ease-emphasis) both; }
 
-/* The sheet rides a spring on the way in; overshoot is what sells the weight. */
+/* The sheet rides a spring on the way in; overshoot is what sells the weight.
+   No will-change here: the sheet is also the scroll container, and pinning it
+   to its own composited layer for as long as it is open is what makes dragging
+   inside it feel wrong in a WebView. It only moves on open and close. */
 .modal-content {
-  will-change: transform;
   transition: transform var(--duration-slow) var(--ease-spring);
 }
 
 /* Toasts, XP pops and reward overlays are pure transform/opacity already —
    promote them so the first frame is never the one that stutters. */
-.toast, .xp-popup, .modal-overlay, .fab { will-change: transform, opacity; }
+.toast, .xp-popup, .fab { will-change: transform, opacity; }
 
 /* Long lists scroll on their own layer and stop dragging the page with them. */
 .screen-scroll {

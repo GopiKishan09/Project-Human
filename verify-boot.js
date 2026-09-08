@@ -49,6 +49,12 @@ assert('Single haptic vocabulary', appJs.includes('HAPTIC_PATTERNS') && appJs.in
 assert('No raw vibrate calls outside the helper',
   (appJs.match(/navigator\.vibrate/g) || []).length <= 2);
 assert('Tap feedback armed at init', /function init\(\)[\s\S]*initTapFeedback\(\)/.test(appJs));
+// A catch-all onclick is not a control: #modal-content carries one only to stop
+// propagation, and treating it as tappable clipped the sheet's own scrolling.
+assert('Bare [onclick] is not treated as a control', !/'\[onclick\]'/.test(appJs));
+assert('Container elements excluded from tap feedback', appJs.includes('NOT_TAPPABLE'));
+assert('Ripple never clips a scroll container',
+  /function spawnRipple[\s\S]{0,900}if \(scrolls\) return;/.test(appJs));
 assert('Data export/reset removed', !appJs.includes('function exportData') && !appJs.includes('function executeReset'));
 assert('Data export/reset buttons removed',
   !html.includes('App.exportData') && !html.includes('App.confirmReset'));
@@ -67,6 +73,10 @@ assert('Real spring easing', css.includes('--ease-spring: cubic-bezier(0.34, 1.5
 assert('No transition:all left', !/transition:\s*all\s/.test(css));
 assert('Reduced motion disables the ripple',
   /prefers-reduced-motion[\s\S]*\.tap-ripple \{ display: none/.test(css));
+// The sheet is the scroll container; a permanent composited layer makes
+// dragging inside it feel wrong in a WebView.
+assert('Scrollable sheet is not permanently promoted',
+  !/\.modal-content \{\s*\r?\n?\s*will-change/.test(css));
 
 const failed = checks.filter(c => !c.pass);
 checks.forEach(c => console.log(`${c.pass ? 'PASS' : 'FAIL'}: ${c.name}`));
