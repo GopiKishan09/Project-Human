@@ -3551,6 +3551,39 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     return false;
   }
 
+  /**
+   * The web-side half of back handling.
+   *
+   * handleBackPress alone only covers the packaged Android shell, which asks
+   * the page directly. Installed as a PWA — or opened in a browser — back is
+   * plain history navigation, and since the app never changes its URL there is
+   * nothing behind the first entry, so the very first press closed it from any
+   * screen.
+   *
+   * So keep one spare history entry parked on top of the real one. Back
+   * consumes that entry instead of leaving, we unwind a layer, and we park a
+   * fresh one. When there is nothing left to unwind we let the entry stay
+   * consumed, and the next press leaves the app for real.
+   */
+  function armBackGuard() {
+    try { history.pushState({ phBackGuard: true }, '', location.href); }
+    catch (e) { /* history unavailable — the Android shell still works */ }
+  }
+
+  function initBackGuard() {
+    if (typeof history === 'undefined' || !history.pushState) return;
+    armBackGuard();
+    window.addEventListener('popstate', () => {
+      if (handleBackPress()) { armBackGuard(); return; }
+
+      // Nothing left to unwind. The guard is spent, so a second press now
+      // leaves the app for real. Re-arm shortly after in case the user stays
+      // and navigates somewhere new instead.
+      showToast('Press back again to exit', 'default');
+      setTimeout(armBackGuard, 2000);
+    });
+  }
+
   function goBackToMissions() {
     currentMissionId = null;
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -3681,6 +3714,10 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
       renderRemindersCard();
       syncNativeReminders();
     });
+
+    // Back must unwind the app, not leave it, in the browser and the installed
+    // PWA too — not only in the Android shell, which asks the page directly.
+    initBackGuard();
 
     // Register online/offline event listeners
     window.addEventListener('online', updateConnectivityStatus);

@@ -29,6 +29,21 @@ assert('renderCurrentScreen guarded by READY', /function renderCurrentScreen\(\)
 assert('updateAppShellVisibility present', appJs.includes('function updateAppShellVisibility'));
 assert('localStorage only for UI prefs', !appJs.match(/localStorage\.(get|set)Item\((?!STORAGE_KEYS|'isAndroidApp')/));
 
+// Back must unwind the app in the browser/PWA too, not only in the Android
+// shell — the page never changes its URL, so history is empty without a guard.
+assert('Back guard armed at init', /function init\(\)[\s\S]*initBackGuard\(\)/.test(appJs));
+assert('Back guard re-arms after a handled press',
+  /popstate[\s\S]{0,160}if \(handleBackPress\(\)\) \{ armBackGuard\(\)/.test(appJs));
+
+// The sign-up phone has to survive the hop from account creation to the first
+// profile write; resetAuthUi runs in between and used to clear it.
+const resetAuthUiBody = (appJs.match(/function resetAuthUi\(\)[\s\S]*?\n  \}/) || [''])[0];
+assert('resetAuthUi leaves the pending phone alone',
+  resetAuthUiBody.length > 0 && !/PendingSignupPhone\(/.test(resetAuthUiBody));
+assert('Pending sign-up phone is persisted', appJs.includes('STORAGE_KEYS.pendingPhone'));
+assert('Sign-up phone reaches the profile write',
+  /const signupPhone = getPendingSignupPhone\(\);[\s\S]{0,120}state\.profile\.phone = signupPhone/.test(appJs));
+
 const css = readFileSync('index.css', 'utf8');
 assert('FAB base styles defined', /\.fab\s*\{[\s\S]*position:\s*fixed/.test(css));
 assert('border-color token defined', css.includes('--border-color:'));
