@@ -1230,58 +1230,6 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     }
   }
 
-  async function dbResetAll() {
-    if (isFirebaseEnabled && auth.currentUser) {
-      const userId = auth.currentUser.uid;
-
-      try {
-        const collections = ['missions', 'attributes', 'actions', 'completions'];
-        for (const colName of collections) {
-          const snapshot = await getDocs(collection(db, 'users', userId, colName));
-          const batch = writeBatch(db);
-          snapshot.forEach(docSnap => batch.delete(docSnap.ref));
-          await batch.commit();
-        }
-
-        const newProfile = {
-          charName: '',
-          archetype: '',
-          totalXp: 0,
-          currentStreak: 0,
-          longestStreak: 0,
-          lastActiveDate: '',
-          lastVictoryDate: '',
-          lastVictoryTier: 0,
-          achievements: [],
-          stats: { strength: 0, intelligence: 0, wealth: 0, discipline: 0, social: 0 }
-        };
-        await setDoc(doc(db, 'users', userId), newProfile);
-      } catch (err) {
-        console.error("Error resetting data:", err);
-      }
-    } else {
-      state = {
-        missions: [],
-        attributes: [],
-        actions: [],
-        completions: [],
-        profile: {
-          charName: '',
-          archetype: '',
-          totalXp: 0,
-          currentStreak: 0,
-          longestStreak: 0,
-          lastActiveDate: '',
-          lastVictoryDate: '',
-          lastVictoryTier: 0,
-          achievements: [],
-          stats: { strength: 0, intelligence: 0, wealth: 0, discipline: 0, social: 0 }
-        }
-      };
-      saveAll();
-    }
-  }
-
   // ---------------------------------------------------------------------------
   // Level System
   // ---------------------------------------------------------------------------
@@ -3593,68 +3541,6 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   }
 
   // ---------------------------------------------------------------------------
-  // Data Management
-  // ---------------------------------------------------------------------------
-  function confirmReset() {
-    showConfirmDialog(
-      'Reset All Data',
-      'This will permanently delete ALL your missions, actions, progress, and achievements. This cannot be undone!',
-      'Reset Everything',
-      'App.executeReset()'
-    );
-  }
-
-  function executeReset() {
-    if (isFirebaseEnabled && auth.currentUser) {
-      // Reset clears progress, not the account, so the sign-up phone stays.
-      const keptPhone = state.profile.phone || '';
-      state.missions = [];
-      state.attributes = [];
-      state.actions = [];
-      state.completions = [];
-      state.profile = {
-        charName: '',
-        phone: keptPhone,
-        archetype: '',
-        totalXp: 0,
-        currentStreak: 0,
-        longestStreak: 0,
-        lastActiveDate: '',
-        lastVictoryDate: '',
-        lastVictoryTier: 0,
-        achievements: [],
-        stats: { strength: 0, intelligence: 0, wealth: 0, discipline: 0, social: 0 }
-      };
-    }
-    dbResetAll();
-    closeModal();
-    showToast('All data has been reset', 'default');
-    switchTab('today');
-  }
-
-  function exportData() {
-    const data = {
-      missions: state.missions,
-      attributes: state.attributes,
-      actions: state.actions,
-      completions: state.completions,
-      profile: state.profile,
-      exportedAt: new Date().toISOString()
-    };
-
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `project-human-backup-${getToday()}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    showToast('Data exported!', 'success');
-  }
-
-  // ---------------------------------------------------------------------------
   // Utility
   // ---------------------------------------------------------------------------
   function escapeHtml(str) {
@@ -3781,15 +3667,12 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     closeModal,
     handleModalOverlayClick,
     dismissLevelUp,
-    confirmReset,
-    exportData,
     selectDifficulty,
     selectRecurring,
     selectIcon,
     executeDeleteMission,
     executeDeleteAttribute,
     executeDeleteAction,
-    executeReset,
     toggleFormStat,
     nextOnboardingStep,
     selectArchetype,
