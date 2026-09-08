@@ -28,7 +28,8 @@ const App = (() => {
   const STORAGE_KEYS = {
     theme: 'ph_theme',
     currentTab: 'ph_current_tab',
-    notifyAsked: 'ph_notify_asked'
+    notifyAsked: 'ph_notify_asked',
+    pendingPhone: 'ph_pending_phone'
   };
 
   const XP_MAP = { easy: 10, medium: 25, hard: 50, legendary: 100 };
@@ -514,17 +515,18 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
         setAppState('NEW_USER');
 
         // If it doesn't exist at all, create default profile immediately
-        if (pendingSignupPhone) {
-          state.profile.phone = pendingSignupPhone;
-          pendingSignupPhone = '';
-        }
+        const signupPhone = getPendingSignupPhone();
+        if (signupPhone) state.profile.phone = signupPhone;
 
-        if (!docSnap.exists()) {
-          await (async () => {
+        // A half-written doc (exists, but onboarding never finished) still
+        // needs the number merged in, otherwise it is only carried by
+        // in-memory state that a reload would lose.
+        await (async () => {
   if (DEBUG_AUTH) console.log(`[${new Date().toISOString()}] FIRESTORE: Profile created`);
-  return await setDoc(userDocRef, state.profile);
+  return await setDoc(userDocRef, state.profile, { merge: docSnap.exists() });
 })();
-        }
+        logBoot('[Signup Phone Stored]', state.profile.phone || 'none');
+        setPendingSignupPhone('');
 
         hideLoadingScreen();
         showOnboarding();
@@ -532,6 +534,17 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
         // EXISTING USER
         setAppState('PROFILE_FOUND');
         state.profile = docSnap.data();
+
+        // Backfill: an account created before the number was being saved (or
+        // one whose onboarding wrote the profile first) still has a pending
+        // phone to claim.
+        const carriedPhone = getPendingSignupPhone();
+        if (carriedPhone && !state.profile.phone) {
+          state.profile.phone = carriedPhone;
+          await setDoc(userDocRef, { phone: carriedPhone }, { merge: true });
+          logBoot('[Signup Phone Backfilled]', carriedPhone);
+        }
+        setPendingSignupPhone('');
 
         // One-time fetch of all collections before rendering
         const [missionsSnap, attributesSnap, actionsSnap, completionsSnap] = await Promise.all([
@@ -684,9 +697,24 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   // by email — so it is stored as profile data.
 
   let authMode = 'signin';
+
   // Held between "create account" and the profile write that bootstrapUser
   // does, since the phone has nowhere to live until that document exists.
-  let pendingSignupPhone = '';
+  // Mirrored into localStorage: creating the account hands control to
+  // onAuthStateChanged, and anything that restarts the page in between (the
+  // WebView reloading, a crash, the user closing the app mid-onboarding) used
+  // to drop the number on the floor with nothing left to recover it from.
+  function getPendingSignupPhone() {
+    try { return localStorage.getItem(STORAGE_KEYS.pendingPhone) || ''; }
+    catch (e) { return ''; }
+  }
+
+  function setPendingSignupPhone(phone) {
+    try {
+      if (phone) localStorage.setItem(STORAGE_KEYS.pendingPhone, phone);
+      else localStorage.removeItem(STORAGE_KEYS.pendingPhone);
+    } catch (e) { /* private mode — the in-session path still works */ }
+  }
 
   function setAuthError(message) {
     const el = document.getElementById('auth-error');
@@ -776,7 +804,10 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
   function resetAuthUi() {
     ['signin-email', 'signin-password', 'signup-email', 'signup-phone', 'signup-password']
       .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-    pendingSignupPhone = '';
+    // Deliberately does NOT clear the pending sign-up phone. Signing in runs
+    // this to wipe the form, and it runs before bootstrapUser writes the first
+    // profile — clearing it here dropped every sign-up number before it could
+    // be saved.
     setAuthMode('signin');
   }
 
@@ -879,14 +910,14 @@ Listeners: ${syncActive ? 'Yes' : 'No'}
     try {
       // Stash it before the account exists: onAuthStateChanged fires straight
       // after this resolves, and bootstrapUser writes the first profile.
-      pendingSignupPhone = phone;
+      setPendingSignupPhone(phone);
       await createUserWithEmailAndPassword(auth, email, password);
       clearTimeout(safetyTimer);
       showLoadingScreen();
       // handleAuthStateChange takes over from here.
     } catch (e) {
       clearTimeout(safetyTimer);
-      pendingSignupPhone = '';
+      setPendingSignupPhone('');
       authInFlight = false;
       resetSignInButtonState();
       logAuthError('Sign-up failed', e);
